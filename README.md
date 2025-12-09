@@ -93,29 +93,47 @@ The main forensics analysis script that collects and analyzes RDP connection log
 - Administrator privileges (required to read Security event logs)
 - PowerShell 5.1 or later
 
+**Installation:**
+
+You can run the scripts directly or import the module for easier access:
+
+```powershell
+# Option 1: Run scripts directly
+.\Get-RDPForensics.ps1
+
+# Option 2: Import as module (recommended)
+Import-Module .\RDP-Forensic.psm1
+
+# Now you can call functions directly
+Get-RDPForensics
+Get-CurrentRDPSessions
+```
+
 **Usage Examples:**
 
 ```powershell
 # Get all RDP events for today
 .\Get-RDPForensics.ps1
+# OR if module imported:
+Get-RDPForensics
 
 # Get last 7 days of RDP events
-.\Get-RDPForensics.ps1 -StartDate (Get-Date).AddDays(-7)
+Get-RDPForensics -StartDate (Get-Date).AddDays(-7)
 
 # Get RDP events for specific user
-.\Get-RDPForensics.ps1 -Username "john.doe" -StartDate (Get-Date).AddMonths(-1)
+Get-RDPForensics -Username "john.doe" -StartDate (Get-Date).AddMonths(-1)
 
 # Filter by source IP address
-.\Get-RDPForensics.ps1 -SourceIP "192.168.1.100"
+Get-RDPForensics -SourceIP "192.168.1.100"
 
 # Export results to CSV
-.\Get-RDPForensics.ps1 -StartDate (Get-Date).AddDays(-30) -ExportPath "C:\Reports\RDP"
+Get-RDPForensics -StartDate (Get-Date).AddDays(-30) -ExportPath "C:\Reports\RDP"
 
 # Include outbound RDP connections
-.\Get-RDPForensics.ps1 -IncludeOutbound
+Get-RDPForensics -IncludeOutbound
 
 # Get events for last month with export
-.\Get-RDPForensics.ps1 -StartDate (Get-Date).AddMonths(-1) -ExportPath "C:\RDP_Analysis" -IncludeOutbound
+Get-RDPForensics -StartDate (Get-Date).AddMonths(-1) -ExportPath "C:\RDP_Analysis" -IncludeOutbound
 ```
 
 **Parameters:**
@@ -143,14 +161,16 @@ Quick analysis script for viewing currently active RDP sessions.
 
 ```powershell
 # Display all current sessions
-.\Get-CurrentRDPSessions.ps1
+Get-CurrentRDPSessions
 
 # Show processes for all sessions
-.\Get-CurrentRDPSessions.ps1 -ShowProcesses
+Get-CurrentRDPSessions -ShowProcesses
 
 # Get detailed info for specific session
-.\Get-CurrentRDPSessions.ps1 -SessionID 3 -ShowProcesses
+Get-CurrentRDPSessions -SessionID 3 -ShowProcesses
 ```
+
+> **Note:** Import the module first with `Import-Module .\RDP-Forensic.psm1` to use these commands directly.
 
 ## Event IDs Reference
 
