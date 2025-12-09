@@ -79,7 +79,7 @@ This toolkit provides detailed analysis of RDP connections across all connection
 
 ### RDP-Forensic.psm1
 
-The main forensics analysis script that collects and analyzes RDP connection logs from multiple Windows Event Log sources.
+The main forensics analysis cmdlet (Get-RDPForensics) that collects and analyzes RDP connection logs from multiple Windows Event Log sources.
 
 **Features:**
 - Collects events from Security, TerminalServices, and System logs
