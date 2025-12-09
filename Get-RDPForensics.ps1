@@ -122,7 +122,7 @@ function Get-RDPForensics {
     Write-Host "          RDP FORENSICS ANALYSIS TOOL v1.0.0                       " -ForegroundColor White -NoNewline
     Write-Host "$vertical" -ForegroundColor Cyan
     Write-Host "$vertical" -ForegroundColor Cyan -NoNewline
-    Write-Host "     $(Get-Emoji 'shield') Security Investigation & Audit Toolkit $(Get-Emoji 'magnify')                   " -ForegroundColor Yellow -NoNewline
+    Write-Host "     $(Get-Emoji 'shield') Security Investigation & Audit Toolkit $(Get-Emoji 'magnify')                  " -ForegroundColor Yellow -NoNewline
     Write-Host "$vertical" -ForegroundColor Cyan
     Write-Host "$bottomLeft$($horizontal * 67)$bottomRight" -ForegroundColor Cyan
     Write-Host ""
