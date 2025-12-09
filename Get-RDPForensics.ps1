@@ -75,15 +75,67 @@ function Get-RDPForensics {
     # Error handling preference
     $ErrorActionPreference = 'Continue'
 
-    Write-Host "`n=== RDP Forensics Analysis Tool ===" -ForegroundColor Cyan
-    Write-Host "Analysis Period: $($StartDate.ToString('yyyy-MM-dd HH:mm:ss')) to $($EndDate.ToString('yyyy-MM-dd HH:mm:ss'))" -ForegroundColor Gray
+    # Emoji support for both PowerShell 5.1 and 7.x
+    function Get-Emoji {
+        param([string]$Name)
+        if ($PSVersionTable.PSVersion.Major -ge 6) {
+            $emojis = @{
+                'shield'    = [char]::ConvertFromUtf32(0x1F6E1) + [char]::ConvertFromUtf32(0xFE0F)
+                'magnify'   = [char]::ConvertFromUtf32(0x1F50D)
+                'check'     = [char]::ConvertFromUtf32(0x2705)
+                'cross'     = [char]::ConvertFromUtf32(0x274C)
+                'warning'   = [char]::ConvertFromUtf32(0x26A0) + [char]::ConvertFromUtf32(0xFE0F)
+                'clock'     = [char]::ConvertFromUtf32(0x23F1) + [char]::ConvertFromUtf32(0xFE0F)
+                'computer'  = [char]::ConvertFromUtf32(0x1F4BB)
+                'lock'      = [char]::ConvertFromUtf32(0x1F512)
+                'key'       = [char]::ConvertFromUtf32(0x1F511)
+                'chart'     = [char]::ConvertFromUtf32(0x1F4CA)
+                'folder'    = [char]::ConvertFromUtf32(0x1F4C1)
+                'rocket'    = [char]::ConvertFromUtf32(0x1F680)
+            }
+        } else {
+            $emojis = @{
+                'shield'    = '[SHIELD]'
+                'magnify'   = '[SEARCH]'
+                'check'     = '[OK]'
+                'cross'     = '[X]'
+                'warning'   = '[!]'
+                'clock'     = '[TIME]'
+                'computer'  = '[PC]'
+                'lock'      = '[LOCK]'
+                'key'       = '[KEY]'
+                'chart'     = '[CHART]'
+                'folder'    = '[FOLDER]'
+                'rocket'    = '[>>]'
+            }
+        }
+        return $emojis[$Name]
+    }
+
+    # ASCII Art Header
+    Write-Host "`n" -NoNewline
+    $topLeft = [char]0x2554; $topRight = [char]0x2557; $bottomLeft = [char]0x255A; $bottomRight = [char]0x255D
+    $horizontal = [string][char]0x2550; $vertical = [char]0x2551
+    Write-Host "$topLeft$($horizontal * 67)$topRight" -ForegroundColor Cyan
+    Write-Host "$vertical" -ForegroundColor Cyan -NoNewline
+    Write-Host "          RDP FORENSICS ANALYSIS TOOL v1.0.0                 " -ForegroundColor White -NoNewline
+    Write-Host "$vertical" -ForegroundColor Cyan
+    Write-Host "$vertical" -ForegroundColor Cyan -NoNewline
+    Write-Host "     $(Get-Emoji 'shield') Security Investigation & Audit Toolkit $(Get-Emoji 'magnify')       " -ForegroundColor Yellow -NoNewline
+    Write-Host "$vertical" -ForegroundColor Cyan
+    Write-Host "$bottomLeft$($horizontal * 67)$bottomRight" -ForegroundColor Cyan
+    Write-Host ""
+    Write-Host "$(Get-Emoji 'clock') Analysis Period: " -ForegroundColor Cyan -NoNewline
+    Write-Host "$($StartDate.ToString('yyyy-MM-dd HH:mm:ss'))" -ForegroundColor White -NoNewline
+    Write-Host " to " -ForegroundColor Gray -NoNewline
+    Write-Host "$($EndDate.ToString('yyyy-MM-dd HH:mm:ss'))" -ForegroundColor White
     Write-Host ""
 
     # Function to parse EventID 1149 - RDP Connection Attempts
     function Get-RDPConnectionAttempts {
         param([DateTime]$Start, [DateTime]$End)
     
-        Write-Host "[1/6] Collecting RDP Connection Attempts (EventID 1149)..." -ForegroundColor Yellow
+        Write-Host "$(Get-Emoji 'rocket') [1/6] Collecting RDP Connection Attempts (EventID 1149)..." -ForegroundColor Yellow
     
         try {
             $events = Get-WinEvent -FilterHashtable @{
@@ -110,11 +162,13 @@ function Get-RDPForensics {
                     }
                 }
             
-                Write-Host "  Found $($results.Count) connection attempts" -ForegroundColor Green
+                Write-Host "  $(Get-Emoji 'check') Found " -ForegroundColor Green -NoNewline
+                Write-Host "$($results.Count)" -ForegroundColor White -NoNewline
+                Write-Host " connection attempts" -ForegroundColor Green
                 return $results
             }
             else {
-                Write-Host "  No connection attempts found" -ForegroundColor Gray
+                Write-Host "  $(Get-Emoji 'cross') No connection attempts found" -ForegroundColor DarkGray
                 return @()
             }
         }
@@ -128,7 +182,7 @@ function Get-RDPForensics {
     function Get-RDPAuthenticationEvents {
         param([DateTime]$Start, [DateTime]$End)
     
-        Write-Host "[2/6] Collecting RDP Authentication Events (EventID 4624, 4625)..." -ForegroundColor Yellow
+        Write-Host "$(Get-Emoji 'key') [2/6] Collecting RDP Authentication Events (EventID 4624, 4625)..." -ForegroundColor Yellow
     
         try {
             $events = Get-WinEvent -FilterHashtable @{
@@ -181,11 +235,13 @@ function Get-RDPForensics {
                     }
                 }
             
-                Write-Host "  Found $($results.Count) authentication events" -ForegroundColor Green
+                Write-Host "  $(Get-Emoji 'check') Found " -ForegroundColor Green -NoNewline
+                Write-Host "$($results.Count)" -ForegroundColor White -NoNewline
+                Write-Host " authentication events" -ForegroundColor Green
                 return $results
             }
             else {
-                Write-Host "  No authentication events found" -ForegroundColor Gray
+                Write-Host "  $(Get-Emoji 'cross') No authentication events found" -ForegroundColor DarkGray
                 return @()
             }
         }
@@ -199,7 +255,7 @@ function Get-RDPForensics {
     function Get-RDPSessionEvents {
         param([DateTime]$Start, [DateTime]$End)
     
-        Write-Host "[3/6] Collecting RDP Session Events (EventID 21-25, 39, 40)..." -ForegroundColor Yellow
+        Write-Host "$(Get-Emoji 'computer') [3/6] Collecting RDP Session Events (EventID 21-25, 39, 40)..." -ForegroundColor Yellow
     
         try {
             $events = Get-WinEvent -FilterHashtable @{
@@ -264,11 +320,13 @@ function Get-RDPForensics {
                     }
                 }
             
-                Write-Host "  Found $($results.Count) session events" -ForegroundColor Green
+                Write-Host "  $(Get-Emoji 'check') Found " -ForegroundColor Green -NoNewline
+                Write-Host "$($results.Count)" -ForegroundColor White -NoNewline
+                Write-Host " session events" -ForegroundColor Green
                 return $results
             }
             else {
-                Write-Host "  No session events found" -ForegroundColor Gray
+                Write-Host "  $(Get-Emoji 'cross') No session events found" -ForegroundColor DarkGray
                 return @()
             }
         }
@@ -282,7 +340,7 @@ function Get-RDPForensics {
     function Get-RDPSessionReconnectEvents {
         param([DateTime]$Start, [DateTime]$End)
     
-        Write-Host "[4/6] Collecting RDP Reconnect/Disconnect Events (EventID 4778, 4779)..." -ForegroundColor Yellow
+        Write-Host "$(Get-Emoji 'lock') [4/6] Collecting RDP Reconnect/Disconnect Events (EventID 4778, 4779)..." -ForegroundColor Yellow
     
         try {
             $events = Get-WinEvent -FilterHashtable @{
@@ -317,11 +375,13 @@ function Get-RDPForensics {
                     }
                 }
             
-                Write-Host "  Found $($results.Count) reconnect/disconnect events" -ForegroundColor Green
+                Write-Host "  $(Get-Emoji 'check') Found " -ForegroundColor Green -NoNewline
+                Write-Host "$($results.Count)" -ForegroundColor White -NoNewline
+                Write-Host " reconnect/disconnect events" -ForegroundColor Green
                 return $results
             }
             else {
-                Write-Host "  No reconnect/disconnect events found" -ForegroundColor Gray
+                Write-Host "  $(Get-Emoji 'cross') No reconnect/disconnect events found" -ForegroundColor DarkGray
                 return @()
             }
         }
@@ -335,7 +395,7 @@ function Get-RDPForensics {
     function Get-RDPLogoffEvents {
         param([DateTime]$Start, [DateTime]$End)
     
-        Write-Host "[5/6] Collecting RDP Logoff Events (EventID 4634, 4647, 9009)..." -ForegroundColor Yellow
+        Write-Host "$(Get-Emoji 'warning') [5/6] Collecting RDP Logoff Events (EventID 4634, 4647, 9009)..." -ForegroundColor Yellow
     
         try {
             # Security log logoff events
@@ -399,7 +459,9 @@ function Get-RDPForensics {
                 }
             }
         
-            Write-Host "  Found $($results.Count) logoff events" -ForegroundColor Green
+            Write-Host "  $(Get-Emoji 'check') Found " -ForegroundColor Green -NoNewline
+            Write-Host "$($results.Count)" -ForegroundColor White -NoNewline
+            Write-Host " logoff events" -ForegroundColor Green
             return $results
         }
         catch {
@@ -412,7 +474,7 @@ function Get-RDPForensics {
     function Get-OutboundRDPConnections {
         param([DateTime]$Start, [DateTime]$End)
     
-        Write-Host "[6/6] Collecting Outbound RDP Connections (EventID 1102)..." -ForegroundColor Yellow
+        Write-Host "$(Get-Emoji 'magnify') [6/6] Collecting Outbound RDP Connections (EventID 1102)..." -ForegroundColor Yellow
     
         try {
             $events = Get-WinEvent -FilterHashtable @{
@@ -452,7 +514,7 @@ function Get-RDPForensics {
                 return $results
             }
             else {
-                Write-Host "  No outbound connections found" -ForegroundColor Gray
+                Write-Host "  $(Get-Emoji 'cross') No outbound connections found" -ForegroundColor DarkGray
                 return @()
             }
         }
@@ -489,8 +551,13 @@ function Get-RDPForensics {
     $allEvents = $allEvents | Sort-Object TimeCreated -Descending
 
     # Display results
-    Write-Host "`n=== Analysis Summary ===" -ForegroundColor Cyan
-    Write-Host "Total Events: $($allEvents.Count)" -ForegroundColor White
+    Write-Host "`n" -NoNewline
+    $separator = [string][char]0x2500
+    Write-Host ($separator * 58) -ForegroundColor DarkCyan
+    Write-Host "$(Get-Emoji 'chart') ANALYSIS SUMMARY" -ForegroundColor Cyan
+    Write-Host ($separator * 58) -ForegroundColor DarkCyan
+    Write-Host "Total Events: " -ForegroundColor Yellow -NoNewline
+    Write-Host "$($allEvents.Count)" -ForegroundColor White
 
     if ($allEvents.Count -gt 0) {
         # Group by event type
@@ -501,7 +568,10 @@ function Get-RDPForensics {
         }
     
         # Display recent events
-        Write-Host "`n=== Recent RDP Events (Top 50) ===" -ForegroundColor Cyan
+        Write-Host "`n" -NoNewline
+        Write-Host ($separator * 58) -ForegroundColor DarkCyan
+        Write-Host "$(Get-Emoji 'magnify') RECENT RDP EVENTS (Top 50)" -ForegroundColor Cyan
+        Write-Host ($separator * 58) -ForegroundColor DarkCyan
         $allEvents | Select-Object -First 50 | Format-Table TimeCreated, EventID, EventType, User, SourceIP, Details -AutoSize
     
         # Export if requested
@@ -513,9 +583,13 @@ function Get-RDPForensics {
             $timestamp = Get-Date -Format "yyyyMMdd_HHmmss"
             $exportFile = Join-Path $ExportPath "RDP_Forensics_$timestamp.csv"
         
-            Write-Host "`n=== Exporting Results ===" -ForegroundColor Cyan
+            Write-Host "`n" -NoNewline
+            Write-Host "──────────────────────────────────────────────────────────" -ForegroundColor DarkCyan
+            Write-Host "$(Get-Emoji 'folder') EXPORTING RESULTS" -ForegroundColor Cyan
+            Write-Host "──────────────────────────────────────────────────────────" -ForegroundColor DarkCyan
             $allEvents | Export-Csv -Path $exportFile -NoTypeInformation -Encoding UTF8
-            Write-Host "Results exported to: $exportFile" -ForegroundColor Green
+            Write-Host "$(Get-Emoji 'check') Results exported to: " -ForegroundColor Green -NoNewline
+            Write-Host "$exportFile" -ForegroundColor White
         
             # Export summary
             $summaryFile = Join-Path $ExportPath "RDP_Summary_$timestamp.txt"
@@ -535,11 +609,12 @@ Unique Source IPs:
 $($allEvents | Where-Object { $_.SourceIP -ne 'N/A' -and $_.SourceIP -ne 'Local Machine' } | Select-Object -ExpandProperty SourceIP -Unique | ForEach-Object { "  $_" } | Out-String)
 "@
             $summary | Out-File -FilePath $summaryFile -Encoding UTF8
-            Write-Host "Summary exported to: $summaryFile" -ForegroundColor Green
+            Write-Host "$(Get-Emoji 'check') Summary exported to: " -ForegroundColor Green -NoNewline
+            Write-Host "$summaryFile" -ForegroundColor White
         }
     }
     else {
-        Write-Host "`nNo RDP events found matching the criteria." -ForegroundColor Yellow
+        Write-Host "`n$(Get-Emoji 'warning') No RDP events found matching the criteria." -ForegroundColor Yellow
     }
 
     # Return the events for pipeline usage
