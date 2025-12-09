@@ -95,19 +95,20 @@ function Get-RDPForensics {
             }
         }
         else {
+            # PowerShell 5.1 - Use Unicode symbols that work in Windows Console
             $emojis = @{
-                'shield'   = '[SHIELD]'
-                'magnify'  = '[SEARCH]'
-                'check'    = '[OK]'
-                'cross'    = '[X]'
-                'warning'  = '[!]'
-                'clock'    = '[TIME]'
-                'computer' = '[PC]'
-                'lock'     = '[LOCK]'
-                'key'      = '[KEY]'
-                'chart'    = '[CHART]'
-                'folder'   = '[FOLDER]'
-                'rocket'   = '[>>]'
+                'shield'   = "$([char]0x25A0)"  # Black square
+                'magnify'  = "$([char]0x25CE)"  # Bullseye
+                'check'    = "$([char]0x221A)"  # Square root (checkmark-like)
+                'cross'    = "$([char]0x00D7)"  # Multiplication sign
+                'warning'  = "$([char]0x203C)"  # Double exclamation
+                'clock'    = "$([char]0x25D4)"  # Circle with upper right quadrant
+                'computer' = "$([char]0x25A3)"  # White square with rounded corners
+                'lock'     = "$([char]0x25A6)"  # Square with vertical fill
+                'key'      = "$([char]0x2020)"  # Dagger
+                'chart'    = "$([char]0x25A0)"  # Black square
+                'folder'   = "$([char]0x25B6)"  # Right-pointing triangle
+                'rocket'   = "$([char]0x25BA)"  # Right-pointing pointer
             }
         }
         return $emojis[$Name]
