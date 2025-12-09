@@ -9,6 +9,62 @@
 
 A comprehensive PowerShell toolkit for analyzing and tracking Remote Desktop Protocol (RDP) connections in Windows environments. This toolkit follows forensic best practices as documented in the Windows OS Hub RDP forensics guide.
 
+## Why This Toolkit?
+
+This is the **only comprehensive, open-source PowerShell-native RDP forensics solution** available. Unlike basic event log queries or expensive commercial tools, this toolkit provides complete lifecycle tracking, multiple log source correlation, and production-ready forensic capabilities.
+
+### Comparison Matrix
+
+| Feature | This Toolkit | Basic PowerShell<br/>(Get-EventLog) | Commercial SIEM<br/>(Splunk, QRadar) | Manual Event Viewer | Third-Party Tools<br/>(Paid Software) |
+|---------|--------------|-------------------------------------|---------------------------------------|---------------------|---------------------------------------|
+| **Cost** | ✅ Free & Open Source | ✅ Built-in | ❌ $1000s+/year | ✅ Built-in | ❌ $500-5000+ |
+| **Event Coverage** | ✅ 15+ Event IDs | ⚠️ Manual queries | ✅ Configurable | ⚠️ Manual filtering | ✅ Varies |
+| **Multi-Log Correlation** | ✅ 5 log sources | ❌ One at a time | ✅ Yes | ❌ Manual switching | ✅ Yes |
+| **Lifecycle Tracking** | ✅ 6 stages | ❌ No | ⚠️ Custom rules | ❌ No | ⚠️ Limited |
+| **Brute Force Detection** | ✅ Built-in | ❌ Manual analysis | ✅ Yes | ❌ No | ✅ Yes |
+| **Session Duration Analysis** | ✅ Automatic | ❌ No | ✅ Custom queries | ❌ No | ⚠️ Sometimes |
+| **Export Capabilities** | ✅ CSV + Summary | ⚠️ Basic | ✅ Advanced | ⚠️ Manual export | ✅ Yes |
+| **Real-time Monitoring** | ✅ Current sessions | ❌ No | ✅ Yes | ⚠️ Limited | ✅ Yes |
+| **Filtering** | ✅ User/IP/Date | ⚠️ Basic Where-Object | ✅ Advanced | ⚠️ Basic | ✅ Advanced |
+| **Documentation** | ✅ Comprehensive | ⚠️ Microsoft Docs | ✅ Vendor docs | ⚠️ Basic | ✅ Vendor docs |
+| **Learning Curve** | ✅ Low (examples included) | ⚠️ Medium | ❌ High | ✅ Low | ⚠️ Medium-High |
+| **Deployment** | ✅ Copy & run | ✅ Built-in | ❌ Complex setup | ✅ Built-in | ⚠️ Installation required |
+| **Customization** | ✅ Full source access | ✅ Script yourself | ⚠️ Limited | ❌ No | ❌ Proprietary |
+| **Forensic Focus** | ✅ Purpose-built | ❌ General purpose | ⚠️ Generic security | ❌ General purpose | ⚠️ Varies |
+| **Incident Response** | ✅ Ready-to-use scenarios | ❌ DIY | ✅ Yes | ❌ Manual | ✅ Yes |
+| **No Internet Required** | ✅ Offline capable | ✅ Yes | ⚠️ Depends | ✅ Yes | ⚠️ Varies |
+| **Script Size** | ✅ Lightweight (~25KB) | N/A | ❌ Heavy agent | N/A | ⚠️ Varies |
+
+### Key Differentiators
+
+**vs. Basic PowerShell Commands:**
+- 🎯 Pre-built forensic workflows instead of manual queries
+- 🔍 Correlates 5 different log sources automatically
+- 📊 Generates summary statistics and reports
+- 🛡️ Built-in brute force attack detection
+- 📝 Comprehensive event parsing (no regex needed)
+
+**vs. Commercial SIEM Solutions:**
+- 💰 Zero licensing costs
+- 🚀 No complex deployment or agents
+- 🔧 Full source code access for customization
+- 📦 Standalone operation (no server infrastructure)
+- 🎓 Lower learning curve with examples
+
+**vs. Manual Event Viewer:**
+- ⚡ Automated collection across multiple logs
+- 🔗 Correlates events by LogonID and SessionID
+- 📈 Statistical analysis and trending
+- 💾 Export to formats suitable for analysis
+- ⏱️ Saves hours of manual investigation time
+
+**vs. Third-Party Security Tools:**
+- 🆓 No subscription or licensing fees
+- 🔓 Open-source transparency
+- 🎯 RDP-specific focus (not generic)
+- 🔄 Regular updates from community
+- 🛠️ Easily extensible and customizable
+
 ## Overview
 
 This toolkit provides detailed analysis of RDP connections across all connection stages:
