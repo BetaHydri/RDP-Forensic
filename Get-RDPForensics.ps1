@@ -1,3 +1,6 @@
+#Requires -RunAsAdministrator
+
+function Get-RDPForensics {
 <#
 .SYNOPSIS
     Comprehensive RDP forensics analysis tool for Windows systems.
@@ -30,15 +33,15 @@
     Include outbound RDP connection logs from the client side.
 
 .EXAMPLE
-    .\Get-RDPForensics.ps1
+    Get-RDPForensics
     Get all RDP events for today.
 
 .EXAMPLE
-    .\Get-RDPForensics.ps1 -StartDate (Get-Date).AddDays(-7) -ExportPath "C:\RDP_Reports"
+    Get-RDPForensics -StartDate (Get-Date).AddDays(-7) -ExportPath "C:\RDP_Reports"
     Get last 7 days of RDP events and export to CSV files.
 
 .EXAMPLE
-    .\Get-RDPForensics.ps1 -Username "john.doe" -StartDate (Get-Date).AddMonths(-1)
+    Get-RDPForensics -Username "john.doe" -StartDate (Get-Date).AddMonths(-1)
     Get RDP events for specific user in the last month.
 
 .NOTES
@@ -67,8 +70,6 @@ param(
     [Parameter()]
     [switch]$IncludeOutbound
 )
-
-#Requires -RunAsAdministrator
 
 # Error handling preference
 $ErrorActionPreference = 'Continue'
@@ -541,3 +542,5 @@ else {
 
 # Return the events for pipeline usage
 return $allEvents
+}
+
