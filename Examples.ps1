@@ -7,7 +7,8 @@
     Run the examples that match your needs.
 
 .NOTES
-    Author: RDP Forensics Examples
+    Author: Jan Tiedemann
+    Version: 1.0.0
     Uncomment the scenarios you want to run.
 #>
 

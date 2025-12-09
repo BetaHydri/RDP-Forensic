@@ -24,7 +24,8 @@ function Get-CurrentRDPSessions {
     Show detailed information and processes for session 3.
 
 .NOTES
-    Author: RDP Forensics Script
+    Author: Jan Tiedemann
+    Version: 1.0.0
     Requires: Administrator privileges
 #>
 

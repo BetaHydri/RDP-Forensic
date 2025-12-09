@@ -45,7 +45,8 @@ function Get-RDPForensics {
     Get RDP events for specific user in the last month.
 
 .NOTES
-    Author: RDP Forensics Script
+    Author: Jan Tiedemann
+    Version: 1.0.0
     Based on: https://woshub.com/rdp-connection-logs-forensics-windows/
     Requires: Administrator privileges to read Security event logs
 #>
