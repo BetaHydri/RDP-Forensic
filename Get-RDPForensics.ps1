@@ -152,21 +152,21 @@ function Get-RDPForensics {
                 if (-not $sessionMap.ContainsKey($correlationKey)) {
                     $sessionMap[$correlationKey] = @{
                         CorrelationKey = $correlationKey
-                        Events = @()
-                        User = $null
-                        SourceIP = $null
-                        StartTime = $null
-                        EndTime = $null
-                        Duration = $null
-                        LogonID = $event.LogonID
-                        SessionID = $event.SessionID
-                        Lifecycle = @{
+                        Events         = @()
+                        User           = $null
+                        SourceIP       = $null
+                        StartTime      = $null
+                        EndTime        = $null
+                        Duration       = $null
+                        LogonID        = $event.LogonID
+                        SessionID      = $event.SessionID
+                        Lifecycle      = @{
                             ConnectionAttempt = $false
-                            Authentication = $false
-                            Logon = $false
-                            Active = $false
-                            Disconnect = $false
-                            Logoff = $false
+                            Authentication    = $false
+                            Logon             = $false
+                            Active            = $false
+                            Disconnect        = $false
+                            Logoff            = $false
                         }
                     }
                 }
@@ -178,10 +178,10 @@ function Get-RDPForensics {
                 switch ($event.EventID) {
                     1149 { $sessionMap[$correlationKey].Lifecycle.ConnectionAttempt = $true }
                     4624 { $sessionMap[$correlationKey].Lifecycle.Authentication = $true }
-                    {$_ -in 21, 22} { $sessionMap[$correlationKey].Lifecycle.Logon = $true }
-                    {$_ -in 24, 25, 4778} { $sessionMap[$correlationKey].Lifecycle.Active = $true }
-                    {$_ -in 39, 40, 4779} { $sessionMap[$correlationKey].Lifecycle.Disconnect = $true }
-                    {$_ -in 23, 4634, 4647, 9009} { $sessionMap[$correlationKey].Lifecycle.Logoff = $true }
+                    { $_ -in 21, 22 } { $sessionMap[$correlationKey].Lifecycle.Logon = $true }
+                    { $_ -in 24, 25, 4778 } { $sessionMap[$correlationKey].Lifecycle.Active = $true }
+                    { $_ -in 39, 40, 4779 } { $sessionMap[$correlationKey].Lifecycle.Disconnect = $true }
+                    { $_ -in 23, 4634, 4647, 9009 } { $sessionMap[$correlationKey].Lifecycle.Logoff = $true }
                 }
                 
                 # Update session metadata
@@ -210,29 +210,30 @@ function Get-RDPForensics {
             
             # Create session object
             [PSCustomObject]@{
-                CorrelationKey = $session.CorrelationKey
-                User = $session.User
-                SourceIP = $session.SourceIP
-                LogonID = $session.LogonID
-                SessionID = $session.SessionID
-                StartTime = $session.StartTime
-                EndTime = $session.EndTime
-                Duration = if ($session.Duration) { 
+                CorrelationKey    = $session.CorrelationKey
+                User              = $session.User
+                SourceIP          = $session.SourceIP
+                LogonID           = $session.LogonID
+                SessionID         = $session.SessionID
+                StartTime         = $session.StartTime
+                EndTime           = $session.EndTime
+                Duration          = if ($session.Duration) { 
                     "{0:hh\:mm\:ss}" -f $session.Duration 
-                } else { 
+                }
+                else { 
                     'N/A' 
                 }
-                EventCount = $session.Events.Count
+                EventCount        = $session.Events.Count
                 ConnectionAttempt = $session.Lifecycle.ConnectionAttempt
-                Authentication = $session.Lifecycle.Authentication
-                Logon = $session.Lifecycle.Logon
-                Active = $session.Lifecycle.Active
-                Disconnect = $session.Lifecycle.Disconnect
-                Logoff = $session.Lifecycle.Logoff
+                Authentication    = $session.Lifecycle.Authentication
+                Logon             = $session.Lifecycle.Logon
+                Active            = $session.Lifecycle.Active
+                Disconnect        = $session.Lifecycle.Disconnect
+                Logoff            = $session.Lifecycle.Logoff
                 LifecycleComplete = ($session.Lifecycle.ConnectionAttempt -or $session.Lifecycle.Authentication) -and 
-                                    $session.Lifecycle.Logon -and 
-                                    $session.Lifecycle.Logoff
-                Events = $session.Events
+                $session.Lifecycle.Logon -and 
+                $session.Lifecycle.Logoff
+                Events            = $session.Events
             }
         }
         
@@ -751,7 +752,8 @@ function Get-RDPForensics {
                 Write-Host "$($session.EventCount)" -ForegroundColor White -NoNewline
                 if (-not $session.LifecycleComplete) {
                     Write-Host "  $(Get-Emoji 'warning') Incomplete session lifecycle!" -ForegroundColor Red
-                } else {
+                }
+                else {
                     Write-Host ""
                 }
             }
@@ -811,8 +813,8 @@ $($allEvents | Where-Object { $_.SourceIP -ne 'N/A' -and $_.SourceIP -ne 'Local 
             if ($GroupBySession -and $sessions) {
                 $sessionFile = Join-Path $ExportPath "RDP_Sessions_$timestamp.csv"
                 $sessions | Select-Object CorrelationKey, User, SourceIP, StartTime, EndTime, Duration, EventCount, 
-                    ConnectionAttempt, Authentication, Logon, Active, Disconnect, Logoff, LifecycleComplete | 
-                    Export-Csv -Path $sessionFile -NoTypeInformation -Encoding UTF8
+                ConnectionAttempt, Authentication, Logon, Active, Disconnect, Logoff, LifecycleComplete | 
+                Export-Csv -Path $sessionFile -NoTypeInformation -Encoding UTF8
                 Write-Host "$(Get-Emoji 'check') Sessions exported to: " -ForegroundColor Green -NoNewline
                 Write-Host "$sessionFile" -ForegroundColor White
             }
