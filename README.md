@@ -217,51 +217,6 @@ Get-RDPForensics -IncludeOutbound
 Get-RDPForensics -StartDate (Get-Date).AddMonths(-1) -ExportPath "C:\RDP_Analysis" -IncludeOutbound
 ```
 
-**Advanced Forensic Filtering Examples:**
-
-```powershell
-# Filter specific IPv4 subnet - find all connections from 10.0.0.0/24
-$events = Get-RDPForensics -StartDate (Get-Date).AddDays(-30)
-$events | Where-Object { $_.SourceIP -match '^10\.0\.0\.' }
-
-# Filter IPv6 link-local addresses (fe80::/10)
-$events = Get-RDPForensics -StartDate (Get-Date).AddDays(-7)
-$events | Where-Object { $_.SourceIP -match '^fe80:' }
-
-# Find all external IPs (not private IPv4 ranges)
-$events = Get-RDPForensics -StartDate (Get-Date).AddMonths(-1)
-$events | Where-Object { 
-    $_.SourceIP -notmatch '^(10\.|172\.(1[6-9]|2[0-9]|3[0-1])\.|192\.168\.|127\.|::1|fe80:)' -and
-    $_.SourceIP -ne 'N/A' -and $_.SourceIP -ne '-' -and $_.SourceIP -ne 'LOCAL'
-}
-
-# Group connections by IP address to identify suspicious activity
-$events = Get-RDPForensics -StartDate (Get-Date).AddDays(-7)
-$events | Where-Object { $_.SourceIP -ne 'N/A' } | 
-    Group-Object SourceIP | 
-    Sort-Object Count -Descending | 
-    Select-Object Count, Name
-
-# Find failed login attempts from specific IPv4 network
-$events = Get-RDPForensics -StartDate (Get-Date).AddDays(-1)
-$events | Where-Object { 
-    $_.EventType -match 'Failed' -and 
-    $_.SourceIP -match '^192\.168\.1\.'
-}
-
-# Identify IPv6 connections for compliance reporting
-$events = Get-RDPForensics -StartDate (Get-Date).AddMonths(-1)
-$ipv6Events = $events | Where-Object { $_.SourceIP -match ':' }
-$ipv6Events | Select-Object TimeCreated, User, SourceIP, EventType | 
-    Export-Csv "C:\Reports\IPv6_RDP_Connections.csv" -NoTypeInformation
-
-# Track connections from specific IPv4 address over time
-Get-RDPForensics -SourceIP "203.0.113.45" -StartDate (Get-Date).AddMonths(-3) |
-    Group-Object @{Expression={$_.TimeCreated.Date}} |
-    Select-Object @{N='Date';E={$_.Name}}, Count |
-    Sort-Object Date
-```
-
 **Parameters:**
 
 | Parameter | Type | Description | Default |
