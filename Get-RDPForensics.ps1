@@ -308,29 +308,38 @@ function Get-RDPForensics {
         
         foreach ($sessionIDKey in $sessionIDSessions) {
             $sessionIDSession = $sessionMap[$sessionIDKey]
-            $sessionIDStart = ($sessionIDSession.Events | Sort-Object TimeCreated | Select-Object -First 1).TimeCreated
             
             # Find matching LogonID session
             $matchedLogonIDKey = $null
-            $closestTimeDiff = [double]::MaxValue  # Use double instead of TimeSpan for comparison with seconds
+            $bestMatchScore = 0  # Track number of synchronized event pairs
             
             foreach ($logonIDKey in $logonIDSessions) {
                 $logonIDSession = $sessionMap[$logonIDKey]
                 
-                # Match criteria: Same user + Time proximity (within ±10 seconds) + RDP LogonType
+                # Match criteria: Same user + synchronized events
                 if ($logonIDSession.User -eq $sessionIDSession.User) {
-                    $logonIDStart = ($logonIDSession.Events | Sort-Object TimeCreated | Select-Object -First 1).TimeCreated
-                    $timeDiff = [Math]::Abs(($logonIDStart - $sessionIDStart).TotalSeconds)
-                    
-                    # Check if this is an RDP session (LogonType 10, 7, or 3)
+                    # Check if this LogonID session has RDP events (4624/4778/4779)
                     $hasRDPLogonType = $logonIDSession.Events | Where-Object { 
-                        $_.EventID -eq 4624 -and 
-                        $_.Details -match 'RemoteInteractive|Unlock/Reconnect|Network' 
+                        ($_.EventID -eq 4624 -and $_.Details -match 'RemoteInteractive|Unlock/Reconnect|Network') -or
+                        ($_.EventID -in @(4778, 4779))
                     }
                     
-                    if ($timeDiff -le 10 -and $hasRDPLogonType) {
-                        if ($timeDiff -lt $closestTimeDiff) {
-                            $closestTimeDiff = $timeDiff
+                    if ($hasRDPLogonType) {
+                        # Count synchronized events (events within 3 seconds of each other)
+                        $synchronizedCount = 0
+                        foreach ($sessionIDEvent in $sessionIDSession.Events) {
+                            foreach ($logonIDEvent in $logonIDSession.Events) {
+                                $timeDiff = [Math]::Abs(($logonIDEvent.TimeCreated - $sessionIDEvent.TimeCreated).TotalSeconds)
+                                if ($timeDiff -le 3) {
+                                    $synchronizedCount++
+                                    break  # Only count each SessionID event once
+                                }
+                            }
+                        }
+                        
+                        # If we found multiple synchronized events, this is a strong match
+                        if ($synchronizedCount -ge 2 -and $synchronizedCount -gt $bestMatchScore) {
+                            $bestMatchScore = $synchronizedCount
                             $matchedLogonIDKey = $logonIDKey
                         }
                     }
