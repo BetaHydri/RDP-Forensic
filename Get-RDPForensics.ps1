@@ -1281,6 +1281,11 @@ function Get-RDPForensics {
                 Write-Host "  $(Get-Emoji 'warning') No sessions found with SessionID: $SessionID" -ForegroundColor Yellow
             }
         }
+        
+        # Update event list to show only events from filtered sessions
+        if ($LogonID -or $SessionID) {
+            $allEvents = @($sessions | ForEach-Object { $_.Events }) | Sort-Object TimeCreated -Descending
+        }
     }
 
     # Display results
