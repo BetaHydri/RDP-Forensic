@@ -8,7 +8,7 @@
 
 .NOTES
     Author: Jan Tiedemann
-    Version: 1.0.1
+    Version: 1.0.2
     Uncomment the scenarios you want to run.
 #>
 
