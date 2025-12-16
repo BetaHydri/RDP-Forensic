@@ -1,5 +1,5 @@
 # RDP Forensics Module Loader
-# Version: 1.0.1
+# Version: 1.0.2
 # Author: Jan Tiedemann
 # Import this to load all functions as cmdlets
 

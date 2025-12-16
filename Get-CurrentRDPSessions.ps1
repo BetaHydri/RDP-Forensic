@@ -15,6 +15,12 @@ function Get-CurrentRDPSessions {
 .PARAMETER ShowProcesses
     Show running processes for each session.
 
+.PARAMETER Watch
+    Enable continuous monitoring mode with auto-refresh. Press Ctrl+C to exit.
+
+.PARAMETER RefreshInterval
+    Refresh interval in seconds when using -Watch mode. Default is 5 seconds.
+
 .EXAMPLE
     Get-CurrentRDPSessions
     Display all current RDP sessions.
@@ -23,9 +29,17 @@ function Get-CurrentRDPSessions {
     Get-CurrentRDPSessions -SessionID 3 -ShowProcesses
     Show detailed information and processes for session 3.
 
+.EXAMPLE
+    Get-CurrentRDPSessions -Watch
+    Continuously monitor RDP sessions with 5-second refresh.
+
+.EXAMPLE
+    Get-CurrentRDPSessions -Watch -RefreshInterval 10
+    Monitor sessions with 10-second refresh interval.
+
 .NOTES
     Author: Jan Tiedemann
-    Version: 1.0.1
+    Version: 1.0.2
     Requires: Administrator privileges
 #>
 
@@ -35,7 +49,14 @@ function Get-CurrentRDPSessions {
         [int]$SessionID,
     
         [Parameter()]
-        [switch]$ShowProcesses
+        [switch]$ShowProcesses,
+
+        [Parameter()]
+        [switch]$Watch,
+
+        [Parameter()]
+        [ValidateRange(1, 300)]
+        [int]$RefreshInterval = 5
     )
 
     # Emoji support for both PowerShell 5.1 and 7.x
@@ -65,24 +86,39 @@ function Get-CurrentRDPSessions {
         return $emojis[$Name]
     }
 
-    # ASCII Art Header
-    Write-Host "`n" -NoNewline
-    $topLeft = [char]0x2554; $topRight = [char]0x2557; $bottomLeft = [char]0x255A; $bottomRight = [char]0x255D
-    $horizontal = [string][char]0x2550; $vertical = [char]0x2551
-    Write-Host "$topLeft$($horizontal * 51)$topRight" -ForegroundColor Green
-    Write-Host "$vertical" -ForegroundColor Green -NoNewline
-    Write-Host "     ACTIVE RDP SESSIONS MONITOR v1.0.1            " -ForegroundColor White -NoNewline
-    Write-Host "$vertical" -ForegroundColor Green
-    Write-Host "$bottomLeft$($horizontal * 51)$bottomRight" -ForegroundColor Green
-    Write-Host ""
-    Write-Host "$(Get-Emoji 'computer') Computer: " -ForegroundColor Cyan -NoNewline
-    Write-Host "$env:COMPUTERNAME" -ForegroundColor White
-    Write-Host "$(Get-Emoji 'clock') Time: " -ForegroundColor Cyan -NoNewline
-    Write-Host "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')" -ForegroundColor White
-    Write-Host ""
+    # Main monitoring logic wrapped in a loop for Watch mode
+    $continueMonitoring = $true
+    $iterationCount = 0
 
-    # Get current sessions using qwinsta
-    try {
+    while ($continueMonitoring) {
+        # Clear screen only in Watch mode (after first iteration)
+        if ($Watch -and $iterationCount -gt 0) {
+            Clear-Host
+        }
+
+        # ASCII Art Header
+        Write-Host "`n" -NoNewline
+        $topLeft = [char]0x2554; $topRight = [char]0x2557; $bottomLeft = [char]0x255A; $bottomRight = [char]0x255D
+        $horizontal = [string][char]0x2550; $vertical = [char]0x2551
+        Write-Host "$topLeft$($horizontal * 51)$topRight" -ForegroundColor Green
+        Write-Host "$vertical" -ForegroundColor Green -NoNewline
+        Write-Host "     ACTIVE RDP SESSIONS MONITOR v1.0.2            " -ForegroundColor White -NoNewline
+        Write-Host "$vertical" -ForegroundColor Green
+        Write-Host "$bottomLeft$($horizontal * 51)$bottomRight" -ForegroundColor Green
+        Write-Host ""
+        Write-Host "$(Get-Emoji 'computer') Computer: " -ForegroundColor Cyan -NoNewline
+        Write-Host "$env:COMPUTERNAME" -ForegroundColor White
+        Write-Host "$(Get-Emoji 'clock') Time: " -ForegroundColor Cyan -NoNewline
+        Write-Host "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')" -ForegroundColor White
+        
+        if ($Watch) {
+            Write-Host "$(Get-Emoji 'check') Mode: " -ForegroundColor Cyan -NoNewline
+            Write-Host "Auto-Refresh (${RefreshInterval}s) - Press Ctrl+C to exit" -ForegroundColor Yellow
+        }
+        Write-Host ""
+
+        # Get current sessions using qwinsta
+        try {
         $sessions = qwinsta 2>$null
     
         if ($sessions) {
@@ -195,5 +231,16 @@ function Get-CurrentRDPSessions {
     }
 
     Write-Host ""
+
+    # Handle Watch mode loop
+    if ($Watch) {
+        $iterationCount++
+        Write-Host "Next refresh in $RefreshInterval seconds..." -ForegroundColor DarkGray
+        Start-Sleep -Seconds $RefreshInterval
+    }
+    else {
+        $continueMonitoring = $false
+    }
+    }
 }
 

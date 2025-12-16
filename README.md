@@ -3,7 +3,7 @@
 ![PowerShell](https://img.shields.io/badge/PowerShell-5.1%2B-blue?logo=powershell)
 ![Platform](https://img.shields.io/badge/Platform-Windows%20Server%20%7C%20Windows%2010%2F11-0078D4?logo=windows)
 ![License](https://img.shields.io/badge/License-MIT-green)
-![Version](https://img.shields.io/badge/Version-1.0.1-brightgreen)
+![Version](https://img.shields.io/badge/Version-1.0.2-brightgreen)
 ![Requires Admin](https://img.shields.io/badge/Requires-Administrator-red)
 ![Event Logs](https://img.shields.io/badge/Event%20Logs-Security%20%7C%20TerminalServices-orange)
 
@@ -188,11 +188,13 @@ Quick analysis script for viewing currently active RDP sessions.
 - Displays session states (Active/Disconnected)
 - Lists running processes per session
 - Shows recent logon information for active users
+- **Auto-refresh monitoring mode** for real-time session tracking
+- Customizable refresh intervals (1-300 seconds)
 
 **Usage Examples:**
 
 ```powershell
-# Display all current sessions
+# Display all current sessions (one-time check)
 Get-CurrentRDPSessions
 
 # Show processes for all sessions
@@ -200,7 +202,30 @@ Get-CurrentRDPSessions -ShowProcesses
 
 # Get detailed info for specific session
 Get-CurrentRDPSessions -SessionID 3 -ShowProcesses
+
+# REAL-TIME MONITORING: Auto-refresh every 5 seconds (default)
+Get-CurrentRDPSessions -Watch
+
+# Monitor with custom 10-second refresh interval
+Get-CurrentRDPSessions -Watch -RefreshInterval 10
+
+# Monitor with processes shown and 15-second refresh
+Get-CurrentRDPSessions -Watch -ShowProcesses -RefreshInterval 15
+
+# Monitor during incident response with 3-second updates
+Get-CurrentRDPSessions -Watch -RefreshInterval 3
 ```
+
+**Real-Time Monitoring:**
+
+The `-Watch` parameter enables continuous monitoring mode that automatically refreshes the display at your specified interval. Perfect for:
+- Security incident response and live threat monitoring
+- System maintenance windows
+- Detecting unauthorized access attempts
+- Tracking session state changes in real-time
+- Monitoring user activity during audits
+
+Press `Ctrl+C` to exit watch mode at any time.
 
 > **Note:** Import the module first with `Import-Module .\RDP-Forensic.psm1` to use these commands directly.
 
