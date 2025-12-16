@@ -353,6 +353,9 @@ function Get-CurrentRDPSessions {
                     $sessionName = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($sessionInfo.pWinStationName)
                     $state = $sessionInfo.State.ToString()
                     
+                    # DEBUG: Show all sessions
+                    Write-Host "[DEBUG] Session: $sessionName | State: $state | ID: $($sessionInfo.SessionId)" -ForegroundColor Gray
+                    
                     # Only include RDP sessions (exclude console, services, listeners)
                     # Match both lowercase and uppercase variations: rdp-tcp or RDP-Tcp
                     if ($sessionName -match 'rdp-tcp#\d+|RDP-Tcp#\d+' -and $state -ne 'WTSListen') {
