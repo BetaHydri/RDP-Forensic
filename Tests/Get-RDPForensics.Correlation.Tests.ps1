@@ -71,9 +71,9 @@ Describe "Get-RDPForensics Session Correlation Tests" {
             $functionContent | Should -Match 'Authentication'
         }
         
-        It "Should track EventID 4776 in Authentication stage" {
+        It "Should track pre-authentication EventIDs in Authentication stage" {
             $functionContent = Get-Content "$ModulePath\Get-RDPForensics.ps1" -Raw
-            $functionContent | Should -Match '4624.*4776.*Authentication'
+            $functionContent | Should -Match '4624.*4776'
         }
         
         It "Should track Logon stage" {
@@ -127,13 +127,18 @@ Describe "Get-RDPForensics Session Correlation Tests" {
         }
     }
     
-    Context "Time-Based Correlation for EventID 4776" {
-        It "Should contain time-based correlation logic for 4776" {
+    Context "Time-Based Correlation for Pre-Authentication Events (4768-4772, 4776)" {
+        It "Should contain time-based correlation logic for pre-auth events" {
             $functionContent = Get-Content "$ModulePath\Get-RDPForensics.ps1" -Raw
-            $functionContent | Should -Match 'Time-based correlation.*4776'
+            $functionContent | Should -Match 'Time-based correlation.*pre-authentication'
         }
         
-        It "Should match 4776 events within time window" {
+        It "Should include all pre-auth EventIDs in correlation" {
+            $functionContent = Get-Content "$ModulePath\Get-RDPForensics.ps1" -Raw
+            $functionContent | Should -Match '4768.*4769.*4770.*4771.*4772.*4776'
+        }
+        
+        It "Should match pre-auth events within time window" {
             $functionContent = Get-Content "$ModulePath\Get-RDPForensics.ps1" -Raw
             $functionContent | Should -Match 'TotalSeconds.*-ge.*0.*-and.*TotalSeconds.*-le'
         }
@@ -143,9 +148,14 @@ Describe "Get-RDPForensics Session Correlation Tests" {
             $functionContent | Should -Match 'User.*-eq.*User'
         }
         
-        It "Should add 4776 events to matched sessions" {
+        It "Should add pre-auth events to matched sessions" {
             $functionContent = Get-Content "$ModulePath\Get-RDPForensics.ps1" -Raw
-            $functionContent | Should -Match 'sessionMap.*Events.*\+=.*credEvent'
+            $functionContent | Should -Match 'sessionMap.*Events.*\+=.*preAuthEvent'
+        }
+        
+        It "Should filter out uncorrelated pre-auth events" {
+            $functionContent = Get-Content "$ModulePath\Get-RDPForensics.ps1" -Raw
+            $functionContent | Should -Match 'CorrelatedToRDP'
         }
     }
     
