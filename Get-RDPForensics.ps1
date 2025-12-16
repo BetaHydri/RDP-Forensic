@@ -31,6 +31,16 @@ function Get-RDPForensics {
 .PARAMETER SourceIP
     Filter results for a specific source IP address.
 
+.PARAMETER LogonID
+    Filter results for a specific LogonID (e.g., '0x6950A4').
+    Only applicable when using -GroupBySession.
+    Useful for tracking specific Security log authenticated sessions.
+
+.PARAMETER SessionID
+    Filter results for a specific SessionID (e.g., '5').
+    Only applicable when using -GroupBySession.
+    Useful for tracking specific TerminalServices sessions.
+
 .PARAMETER IncludeOutbound
     Include outbound RDP connection logs from the client side.
 
@@ -89,6 +99,14 @@ function Get-RDPForensics {
     Include Kerberos (4768-4772) and NTLM (4776) authentication events with time-based correlation.
     ⚠️ NOTE: Only works when running on Domain Controller. Will return 0 events on Terminal Server.
 
+.EXAMPLE
+    Get-RDPForensics -GroupBySession -LogonID "0x6950A4"
+    Display all events for a specific LogonID-based session.
+
+.EXAMPLE
+    Get-RDPForensics -GroupBySession -SessionID "5"
+    Display all events for a specific SessionID-based session.
+
 .NOTES
     Author: Jan Tiedemann
     Version: 1.0.7
@@ -112,6 +130,12 @@ function Get-RDPForensics {
     
         [Parameter()]
         [string]$SourceIP,
+    
+        [Parameter()]
+        [string]$LogonID,
+    
+        [Parameter()]
+        [string]$SessionID,
     
         [Parameter()]
         [switch]$IncludeOutbound,
@@ -1239,6 +1263,23 @@ function Get-RDPForensics {
             Write-Host "  $(Get-Emoji 'check') Filtered to " -ForegroundColor Green -NoNewline
             Write-Host "$preAuthCount" -ForegroundColor White -NoNewline
             Write-Host " pre-auth events correlated to RDP sessions (non-RDP auth filtered out)" -ForegroundColor Green
+        }
+        
+        # Apply LogonID/SessionID filters if specified
+        if ($LogonID) {
+            Write-Host "  $(Get-Emoji 'magnify') Filtering for LogonID: $LogonID" -ForegroundColor Cyan
+            $sessions = $sessions | Where-Object { $_.LogonID -eq $LogonID }
+            if ($sessions.Count -eq 0) {
+                Write-Host "  $(Get-Emoji 'warning') No sessions found with LogonID: $LogonID" -ForegroundColor Yellow
+            }
+        }
+        
+        if ($SessionID) {
+            Write-Host "  $(Get-Emoji 'magnify') Filtering for SessionID: $SessionID" -ForegroundColor Cyan
+            $sessions = $sessions | Where-Object { $_.SessionID -eq $SessionID }
+            if ($sessions.Count -eq 0) {
+                Write-Host "  $(Get-Emoji 'warning') No sessions found with SessionID: $SessionID" -ForegroundColor Yellow
+            }
         }
     }
 
