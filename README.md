@@ -217,42 +217,6 @@ Get-RDPForensics -IncludeOutbound
 Get-RDPForensics -StartDate (Get-Date).AddMonths(-1) -ExportPath "C:\RDP_Analysis" -IncludeOutbound
 ```
 
-**Session Correlation & Lifecycle Analysis (NEW in v1.0.4):**
-
-```powershell
-# Group all events by LogonID/SessionID to see complete session lifecycles
-Get-RDPForensics -GroupBySession
-
-# Export both events AND correlated sessions to CSV
-Get-RDPForensics -StartDate (Get-Date).AddDays(-7) -GroupBySession -ExportPath "C:\Reports"
-# Creates: RDP_Forensics_<timestamp>.csv (individual events)
-#          RDP_Sessions_<timestamp>.csv (session summary)
-
-# Find incomplete sessions (missing logoff, suspicious disconnects)
-Get-RDPForensics -GroupBySession | Where-Object { -not $_.LifecycleComplete }
-
-# Analyze session durations for specific user
-Get-RDPForensics -Username "john.doe" -GroupBySession -StartDate (Get-Date).AddMonths(-1)
-
-# Identify long-running sessions (over 8 hours)
-$sessions = Get-RDPForensics -GroupBySession -StartDate (Get-Date).AddDays(-7)
-$sessions | Where-Object { 
-    $_.Duration -and 
-    [timespan]::Parse($_.Duration).TotalHours -gt 8 
-}
-
-# Track user activity patterns with session correlation
-Get-RDPForensics -Username "admin" -GroupBySession -StartDate (Get-Date).AddMonths(-1) -ExportPath "C:\Audit"
-```
-
-**Session Correlation Features:**
-- **Automatic Event Grouping** - Links events across Security, TerminalServices, and System logs using ActivityID/LogonID/SessionID
-- **Complete Lifecycle Visualization** - Shows which stages completed: Connection → Auth → Logon → Active → Disconnect → Logoff
-- **Duration Calculation** - Accurate session time from first event to last
-- **Anomaly Detection** - Identifies incomplete sessions (e.g., logon without logoff)
-- **Dual Export** - Saves both raw events AND session summaries to CSV
-- **Optional Pre-Authentication Events (NEW v1.0.6)** - Include EventIDs 4768-4772 (Kerberos: TGT, service tickets, failures) and 4776 (NTLM fallback) with time-based correlation. **⚠️ Only available when running on Domain Controller** - these events are not logged on Terminal Servers
-
 **Advanced Forensic Filtering Examples:**
 
 ```powershell
