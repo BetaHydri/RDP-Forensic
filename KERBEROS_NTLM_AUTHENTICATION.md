@@ -231,9 +231,10 @@ For pre-authentication events from the Domain Controller:
 - ⚠️ **Why**: These events have DC's ActivityID, which doesn't match TS's ActivityID
 
 **Correlation Rules:**
-1. Pre-auth events occur **0-10 seconds before** the RDP session (EventID 4624)
+1. Pre-auth events occur **0-10 seconds before** the RDP session (EventID 4624 with Logon Type 10/7/3/5)
 2. Username must match exactly
 3. Closest timestamp match wins if multiple candidates
+4. **Only RDP-correlated pre-auth events are included** - non-RDP authentications (SMB, SQL, Exchange, etc.) are filtered out
 
 ⚠️ **CRITICAL LIMITATION: Where Events Are Logged**
 
@@ -309,9 +310,15 @@ Enable:
 - **4776** - Fires for ALL NTLM authentication (not just RDP)
 
 **Impact:**
-- Security log will grow much faster
-- May need to increase Security log size (Default: 20 MB → Recommend: 100+ MB)
-- Event collection will take longer (more events to filter)
+- Security log on Domain Controller will grow much faster
+- May need to increase Security log size (Default: 20 MB → Recommend: 100+ MB on DC)
+- Event collection will initially gather ALL authentications from DC
+
+**Automatic Filtering:**
+✅ The tool **automatically filters** pre-authentication events to show only those that correlate to RDP sessions (Logon Type 10/7/3/5):
+- Non-RDP authentications (SMB file shares, SQL, Exchange, HTTP) are excluded from results
+- Only pre-auth events within 0-10 seconds before an RDP logon with matching username are kept
+- This dramatically reduces noise in the output
 
 **Mitigation:**
 - Use `-IncludeCredentialValidation` only when needed for detailed analysis

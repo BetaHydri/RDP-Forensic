@@ -60,7 +60,9 @@ function Get-RDPForensics {
     - Pre-authentication events (4768-4772, 4776) use username + timestamp matching
     - Terminal Server events (4624, 4778, etc.) use ActivityID correlation
     - ActivityID cannot correlate across machines (DC vs Terminal Server)
-    - All pre-auth events matched within 0-10 second window before session start
+    - All pre-auth events matched within 0-10 second window before RDP session start
+    - Automatically filters out non-RDP authentications (SMB, SQL, Exchange, etc.)
+    - Only shows pre-auth events that correlate to RDP Logon Type 10/7/3/5
 
 .EXAMPLE
     Get-RDPForensics
@@ -248,16 +250,20 @@ function Get-RDPForensics {
         # Time-based correlation for pre-authentication events (4768-4772, 4776)
         # These events are logged on DC with different ActivityID than TS events
         # Match pre-auth events to sessions within 10 seconds before session start with matching username
+        # IMPORTANT: Only include pre-auth events that correlate to RDP sessions (Logon Type 10/7/3/5)
+        # This filters out non-RDP authentications (SMB, SQL, Exchange, etc.)
         $preAuthEvents = $Events | Where-Object { 
             $_.EventID -in 4768, 4769, 4770, 4771, 4772, 4776 -and 
             -not $_.CorrelationKey 
         }
         
+        $correlatedPreAuthEventIDs = @()  # Track which pre-auth events matched RDP sessions
+        
         foreach ($preAuthEvent in $preAuthEvents) {
             $matchedSession = $null
             $closestTimeDiff = [TimeSpan]::MaxValue
             
-            # Find the closest session that starts within 10 seconds after this pre-auth event with same user
+            # Find the closest RDP session that starts within 10 seconds after this pre-auth event with same user
             foreach ($sessionKey in $sessionMap.Keys) {
                 $session = $sessionMap[$sessionKey]
                 if ($session.User -eq $preAuthEvent.User) {
@@ -274,11 +280,24 @@ function Get-RDPForensics {
                 }
             }
             
-            # Add pre-auth event to matched session
+            # Add pre-auth event to matched RDP session
             if ($matchedSession) {
                 $sessionMap[$matchedSession].Events += $preAuthEvent
                 $sessionMap[$matchedSession].Lifecycle.Authentication = $true
+                $correlatedPreAuthEventIDs += $preAuthEvent.GetHashCode()  # Track this event as matched
+                
+                # Mark event as correlated (for filtering in non-grouped output)
+                $preAuthEvent | Add-Member -NotePropertyName 'CorrelatedToRDP' -NotePropertyValue $true -Force
             }
+        }
+        
+        # Filter out uncorrelated pre-auth events from the Events array
+        # Only keep pre-auth events that matched to RDP sessions (Logon Type 10/7/3/5)
+        $Events = $Events | Where-Object {
+            # Keep all non-pre-auth events
+            ($_.EventID -notin 4768, 4769, 4770, 4771, 4772, 4776) -or
+            # OR keep pre-auth events that were correlated to RDP sessions
+            ($_.CorrelatedToRDP -eq $true)
         }
         
         # Calculate session durations and create session objects
@@ -325,7 +344,11 @@ function Get-RDPForensics {
             }
         }
         
-        return $sessions | Sort-Object StartTime -Descending
+        # Return sessions and the filtered events array
+        return @{
+            Sessions = ($sessions | Sort-Object StartTime -Descending)
+            FilteredEvents = $Events
+        }
     }
 
     # ASCII Art Header
@@ -1103,10 +1126,19 @@ function Get-RDPForensics {
     if ($GroupBySession) {
         Write-Host "`n" -NoNewline
         Write-Host "$(Get-Emoji 'key') Correlating events by ActivityID/LogonID/SessionID..." -ForegroundColor Cyan
-        $sessions = Get-CorrelatedSessions -Events $allEvents
+        $correlationResult = Get-CorrelatedSessions -Events $allEvents
+        $sessions = $correlationResult.Sessions
+        $allEvents = $correlationResult.FilteredEvents  # Use filtered events (pre-auth events matched to RDP only)
         Write-Host "  $(Get-Emoji 'check') Found " -ForegroundColor Green -NoNewline
         Write-Host "$($sessions.Count)" -ForegroundColor White -NoNewline
         Write-Host " unique sessions (using ActivityID-based correlation)" -ForegroundColor Green
+        
+        if ($IncludeCredentialValidation) {
+            $preAuthCount = ($allEvents | Where-Object { $_.EventID -in 4768, 4769, 4770, 4771, 4772, 4776 }).Count
+            Write-Host "  $(Get-Emoji 'check') Filtered to " -ForegroundColor Green -NoNewline
+            Write-Host "$preAuthCount" -ForegroundColor White -NoNewline
+            Write-Host " pre-auth events correlated to RDP sessions (non-RDP auth filtered out)" -ForegroundColor Green
+        }
     }
 
     # Display results
