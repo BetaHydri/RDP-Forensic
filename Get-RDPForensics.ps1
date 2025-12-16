@@ -737,17 +737,16 @@ function Get-RDPForensics {
                         }
                         default {
                             # Logon/Failed Logon (4624/4625)
-                            $userName = if ($message -match '\s\sAccount Name:\s+([^\r\n]+)') { $matches[1].Trim() } else { 'N/A' }
-                            $userDomain = if ($message -match '\s\sAccount Domain:\s+([^\r\n]+)') { $matches[1].Trim() } else { 'N/A' }
+                            # Match fields from "New Logon" section (not "Subject" section)
+                            $userName = if ($message -match 'New Logon:[\s\S]*?Account Name:\s+([^\r\n]+)') { $matches[1].Trim() } else { 'N/A' }
+                            $userDomain = if ($message -match 'New Logon:[\s\S]*?Account Domain:\s+([^\r\n]+)') { $matches[1].Trim() } else { 'N/A' }
                             $sourceIP = if ($message -match 'Source Network Address:\s+([^\r\n]+)') { $matches[1].Trim() } else { 'N/A' }
                             $logonType = if ($message -match 'Logon Type:\s+([^\r\n]+)') { $matches[1].Trim() } else { 'N/A' }
-                            # Match Logon ID from "New Logon" section (not "Subject" section which is 0x0)
-                            # Look for the pattern after "New Logon:" section by matching with context
                             $logonID = if ($message -match 'New Logon:[\s\S]*?Logon ID:\s+([^\r\n]+)') { $matches[1].Trim() } else { 'N/A' }
                             
-                            # DEBUG: Show extracted LogonID for first few events
+                            # DEBUG: Show extracted values for first few events
                             if ($script:debugLogonIDCount -lt 3) {
-                                Write-Host "    DEBUG 4624: LogonID='$logonID' User='$userName' LogonType='$logonType'" -ForegroundColor DarkYellow
+                                Write-Host "    DEBUG 4624: LogonID='$logonID' User='$userName' Domain='$userDomain' LogonType='$logonType'" -ForegroundColor DarkYellow
                                 $script:debugLogonIDCount++
                             }
                             
