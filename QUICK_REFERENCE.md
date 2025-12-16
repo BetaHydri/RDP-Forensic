@@ -77,12 +77,15 @@ Get-EventLog security -after (Get-date -hour 0 -minute 0 -second 0) | Where-Obje
 Get-EventLog security -after (Get-date).AddHours(-24) | Where-Object {$_.eventid -eq 4625 -and $_.Message -match 'logon type:\s+(10)\s'} | Group-Object @{E={$_.ReplacementStrings[19]}} | Sort-Object Count -Descending
 ```
 
-### Get NTLM Credential Validation Events (NEW v1.0.6)
+### Get Pre-Authentication Events (Kerberos & NTLM) - NEW v1.0.6
 ```powershell
-# Using toolkit with time-based correlation
+# Using toolkit with time-based correlation (RECOMMENDED)
 .\Get-RDPForensics.ps1 -IncludeCredentialValidation -GroupBySession
 
-# Direct event query
+# Direct Kerberos event query
+Get-WinEvent -LogName Security -FilterXPath '*[System[(EventID=4768 or EventID=4771)]]' -MaxEvents 20
+
+# Direct NTLM event query
 Get-WinEvent -LogName Security -FilterXPath '*[System[EventID=4776]]' | ForEach-Object { [xml]$xml=$_.ToXml(); [PSCustomObject]@{Time=$_.TimeCreated; User=$xml.Event.EventData.Data[0].'#text'; Workstation=$xml.Event.EventData.Data[1].'#text'; ErrorCode=$xml.Event.EventData.Data[2].'#text'}}
 ```
 
@@ -146,6 +149,38 @@ Get-EventLog Security | Where-Object {$_.Message -match 'Account Name:\s+usernam
 ### Filter by IP
 ```powershell
 Get-EventLog Security | Where-Object {$_.Message -match 'Source Network Address:\s+192.168.1.100'}
+```
+
+## Audit Policy Requirements
+
+### Check Current Audit Settings
+```powershell
+# Check logon/logoff auditing
+auditpol /get /category:"Logon/Logoff"
+
+# Check account logon auditing (Kerberos/NTLM)
+auditpol /get /category:"Account Logon"
+
+# Check all
+auditpol /get /category:*
+```
+
+### Enable Required Policies
+```powershell
+# Required for basic RDP tracking (4624, 4634, 4778, 4779, 4800, 4801)
+auditpol /set /subcategory:"Logon" /success:enable /failure:enable
+auditpol /set /subcategory:"Logoff" /success:enable
+auditpol /set /subcategory:"Other Logon/Logoff Events" /success:enable /failure:enable
+
+# Optional for -IncludeCredentialValidation (4768-4772, 4776)
+auditpol /set /subcategory:"Kerberos Authentication Service" /success:enable /failure:enable
+auditpol /set /subcategory:"Credential Validation" /success:enable /failure:enable
+```
+
+### Disable Optional Policies (Reduce Log Volume)
+```powershell
+auditpol /set /subcategory:"Kerberos Authentication Service" /success:disable /failure:disable
+auditpol /set /subcategory:"Credential Validation" /success:disable /failure:disable
 ```
 
 ## Export Examples
