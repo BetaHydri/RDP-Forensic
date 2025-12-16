@@ -365,7 +365,7 @@ function Get-CurrentRDPSessions {
                             if (-not $connectTime -and $username -and $username -ne '') {
                                 $logonEvent = Get-WinEvent -FilterHashtable @{
                                     LogName = 'Security'
-                                    Id = 4624
+                                    Id      = 4624
                                 } -MaxEvents 50 -ErrorAction SilentlyContinue | Where-Object {
                                     $_.Message -match $username -and 
                                     $_.Message -match 'Logon Type:\s+(10|7)\s' -and
