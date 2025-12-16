@@ -163,21 +163,22 @@ function Get-CurrentRDPSessions {
                 $sessionObjects = @()
         
                 foreach ($line in $sessions | Select-Object -Skip 1) {
-                    if ($line -match '^\s*(\S+|\s+)\s+(\S+|\s+)\s+(\d+)\s+(\S+)\s+(\S+)') {
+                    if ($line -match '^\s*>?\s*(\S+)\s+(\S+|\s+)\s+(\d+)\s+(\S+)') {
                         $sessionName = $matches[1].Trim()
                         $username = $matches[2].Trim()
                         $id = $matches[3].Trim()
                         $state = $matches[4].Trim()
-                        $type = $matches[5].Trim()
                 
-                        # Only include RDP sessions (not console or services)
-                        if ($sessionName -match 'rdp-tcp' -or $state -match 'Active|Disc') {
+                        # Only include active/disconnected RDP sessions
+                        # Exclude: console (local), services (system), Listen states (RDP listeners)
+                        # Include: rdp-tcp#X sessions with Active/Disc/Conn states
+                        if ($sessionName -match 'rdp-tcp#\d+' -and $state -notmatch 'Listen') {
                             $sessionObjects += [PSCustomObject]@{
                                 SessionName = $sessionName
                                 Username    = if ($username -and $username -ne '') { $username } else { 'N/A' }
                                 ID          = [int]$id
                                 State       = $state
-                                Type        = $type
+                                Type        = 'RDP'
                             }
                         }
                     }
