@@ -109,7 +109,7 @@ function Get-RDPForensics {
 
 .NOTES
     Author: Jan Tiedemann
-    Version: 1.0.7
+    Version: 1.0.8
     Based on: https://woshub.com/rdp-connection-logs-forensics-windows/
     Requires: Administrator privileges to read Security event logs
 #>
@@ -445,7 +445,7 @@ function Get-RDPForensics {
     $horizontal = [string][char]0x2550; $vertical = [char]0x2551
     Write-Host "$topLeft$($horizontal * 67)$topRight" -ForegroundColor Cyan
     Write-Host "$vertical" -ForegroundColor Cyan -NoNewline
-    Write-Host "          RDP FORENSICS ANALYSIS TOOL v1.0.7                       " -ForegroundColor White -NoNewline
+    Write-Host "          RDP FORENSICS ANALYSIS TOOL v1.0.8                       " -ForegroundColor White -NoNewline
     Write-Host "$vertical" -ForegroundColor Cyan
     Write-Host "$vertical" -ForegroundColor Cyan -NoNewline
     Write-Host "        Security Investigation & Audit Toolkit                     " -ForegroundColor Yellow -NoNewline

@@ -222,7 +222,7 @@ Describe "Get-RDPForensics Session Correlation Tests" {
     }
     
     Context "Version Information" {
-        It "Should be version 1.0.7 or higher" {
+        It "Should be version 1.0.8 or higher" {
             $version = (Get-Command Get-RDPForensics).Version
             $version.Major | Should -BeGreaterOrEqual 1
             $version.Minor | Should -BeGreaterOrEqual 0
