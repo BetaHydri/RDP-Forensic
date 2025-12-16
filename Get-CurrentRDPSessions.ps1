@@ -448,7 +448,8 @@ function Get-CurrentRDPSessions {
                 foreach ($session in $sessionObjects) {
                     $key = "$($session.SessionName)-$($session.ID)"
                     $previousSessions[$key] = $session
-                    $logEntry = "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss'),INITIAL_STATE,$($session.SessionName),$($session.Username),$($session.ID),$($session.State),$($session.ClientIP),$($session.ClientName),$($session.ClientBuild),$($session.IdleTime),Monitoring started - session already active"
+                    $connectTimeStr = if ($session.ConnectTime) { $session.ConnectTime.ToString('yyyy-MM-dd HH:mm:ss') } else { 'N/A' }
+                    $logEntry = "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss'),INITIAL_STATE,$($session.SessionName),$($session.Username),$($session.ID),$($session.State),$($session.ClientIP),$($session.ClientName),$connectTimeStr,$($session.ClientBuild),$($session.IdleTime),Monitoring started - session already active"
                     $logEntry | Out-File -FilePath $logFile -Append -Encoding UTF8
                 }
             }
