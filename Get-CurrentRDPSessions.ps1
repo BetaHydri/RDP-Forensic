@@ -51,7 +51,7 @@ function Get-CurrentRDPSessions {
 
 .NOTES
     Author: Jan Tiedemann
-    Version: 1.0.4
+    Version: 1.0.6
     Requires: Administrator privileges
 #>
 

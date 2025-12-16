@@ -212,16 +212,16 @@ Describe "Get-RDPForensics Session Correlation Tests" {
     }
     
     Context "Version Information" {
-        It "Should be version 1.0.4 or higher" {
+        It "Should be version 1.0.6 or higher" {
             $version = (Get-Command Get-RDPForensics).Version
             $version.Major | Should -BeGreaterOrEqual 1
             $version.Minor | Should -BeGreaterOrEqual 0
-            $version.Build | Should -BeGreaterOrEqual 4
+            $version.Build | Should -BeGreaterOrEqual 6
         }
         
-        It "Module manifest should show version 1.0.4" {
+        It "Module manifest should show version 1.0.6" {
             $manifest = Test-ModuleManifest "$ModulePath\RDP-Forensic.psd1" -ErrorAction SilentlyContinue
-            $manifest.Version.ToString() | Should -Be '1.0.4'
+            $manifest.Version.ToString() | Should -Be '1.0.6'
         }
     }
 }
