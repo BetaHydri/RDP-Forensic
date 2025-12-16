@@ -234,4 +234,170 @@ Describe "Get-RDPForensics Session Correlation Tests" {
             $manifest.Version.ToString() | Should -Be '1.0.7'
         }
     }
+    
+    Context "v1.0.7 New Filtering Parameters" {
+        It "Should accept LogonID parameter" {
+            $params = (Get-Command Get-RDPForensics).Parameters
+            $params.ContainsKey('LogonID') | Should -Be $true
+        }
+        
+        It "LogonID should be a string parameter" {
+            $param = (Get-Command Get-RDPForensics).Parameters['LogonID']
+            $param.ParameterType.Name | Should -Be 'String'
+        }
+        
+        It "LogonID should not be mandatory" {
+            $param = (Get-Command Get-RDPForensics).Parameters['LogonID']
+            $param.Attributes.Mandatory | Should -Not -Contain $true
+        }
+        
+        It "Should accept SessionID parameter" {
+            $params = (Get-Command Get-RDPForensics).Parameters
+            $params.ContainsKey('SessionID') | Should -Be $true
+        }
+        
+        It "SessionID should be a string parameter" {
+            $param = (Get-Command Get-RDPForensics).Parameters['SessionID']
+            $param.ParameterType.Name | Should -Be 'String'
+        }
+        
+        It "SessionID should not be mandatory" {
+            $param = (Get-Command Get-RDPForensics).Parameters['SessionID']
+            $param.Attributes.Mandatory | Should -Not -Contain $true
+        }
+        
+        It "Should have help documentation for LogonID parameter" {
+            $help = Get-Help Get-RDPForensics -Parameter LogonID -ErrorAction SilentlyContinue
+            $help | Should -Not -BeNullOrEmpty
+        }
+        
+        It "Should have help documentation for SessionID parameter" {
+            $help = Get-Help Get-RDPForensics -Parameter SessionID -ErrorAction SilentlyContinue
+            $help | Should -Not -BeNullOrEmpty
+        }
+        
+        It "Should have examples using LogonID filter" {
+            $help = Get-Help Get-RDPForensics -Examples
+            $allExamples = ($help.examples.example | ForEach-Object { $_.code }) -join " "
+            $allExamples | Should -Match 'LogonID'
+        }
+        
+        It "Should have examples using SessionID filter" {
+            $help = Get-Help Get-RDPForensics -Examples
+            $allExamples = ($help.examples.example | ForEach-Object { $_.code }) -join " "
+            $allExamples | Should -Match 'SessionID'
+        }
+        
+        It "Should filter sessions by LogonID" {
+            $functionContent = Get-Content "$ModulePath\Get-RDPForensics.ps1" -Raw
+            $functionContent | Should -Match 'if.*\$LogonID.*Where-Object.*LogonID.*-eq'
+        }
+        
+        It "Should filter sessions by SessionID" {
+            $functionContent = Get-Content "$ModulePath\Get-RDPForensics.ps1" -Raw
+            $functionContent | Should -Match 'if.*\$SessionID.*Where-Object.*SessionID.*-eq'
+        }
+        
+        It "Should warn when no sessions match LogonID filter" {
+            $functionContent = Get-Content "$ModulePath\Get-RDPForensics.ps1" -Raw
+            $functionContent | Should -Match 'No sessions found with LogonID'
+        }
+        
+        It "Should warn when no sessions match SessionID filter" {
+            $functionContent = Get-Content "$ModulePath\Get-RDPForensics.ps1" -Raw
+            $functionContent | Should -Match 'No sessions found with SessionID'
+        }
+    }
+    
+    Context "v1.0.7 Bug Fix - Domain Controller 4624 Event Parsing" {
+        It "Should extract username from 'New Logon:' section (not 'Subject:' section)" {
+            $functionContent = Get-Content "$ModulePath\Get-RDPForensics.ps1" -Raw
+            $functionContent | Should -Match 'New Logon:\[\\s\\S\]\*\?Account Name:'
+        }
+        
+        It "Should extract LogonID from 'New Logon:' section" {
+            $functionContent = Get-Content "$ModulePath\Get-RDPForensics.ps1" -Raw
+            $functionContent | Should -Match 'New Logon:\[\\s\\S\]\*\?Logon ID:'
+        }
+        
+        It "Should extract domain from 'New Logon:' section" {
+            $functionContent = Get-Content "$ModulePath\Get-RDPForensics.ps1" -Raw
+            $functionContent | Should -Match 'New Logon:\[\\s\\S\]\*\?Account Domain:'
+        }
+        
+        It "Should construct DOMAIN\\User format for 4624 events" {
+            $functionContent = Get-Content "$ModulePath\Get-RDPForensics.ps1" -Raw
+            $functionContent | Should -Match '\$userDomain\\\\$accountName'
+        }
+    }
+    
+    Context "v1.0.7 Bug Fix - Username Format Standardization" {
+        It "Should construct DOMAIN\\User format for 4778/4779 events (Reconnect/Disconnect)" {
+            $functionContent = Get-Content "$ModulePath\Get-RDPForensics.ps1" -Raw
+            # Check in Get-RDPSessionReconnectEvents function
+            $functionContent | Should -Match 'Get-RDPSessionReconnectEvents.*\$userDomain\\\\$accountName'
+        }
+        
+        It "Should construct DOMAIN\\User format for 4634/4647 events (Logoff)" {
+            $functionContent = Get-Content "$ModulePath\Get-RDPForensics.ps1" -Raw
+            # Check in Get-RDPLogoffEvents function
+            $functionContent | Should -Match 'Get-RDPLogoffEvents.*\$userDomain\\\\$accountName'
+        }
+        
+        It "Should construct DOMAIN\\User format for 4800/4801 events (Lock/Unlock)" {
+            $functionContent = Get-Content "$ModulePath\Get-RDPForensics.ps1" -Raw
+            # Check in Get-RDPLockUnlockEvents function
+            $functionContent | Should -Match 'Get-RDPLockUnlockEvents.*\$userDomain\\\\$accountName'
+        }
+        
+        It "Should handle workgroup systems (COMPUTERNAME\\User format)" {
+            $functionContent = Get-Content "$ModulePath\Get-RDPForensics.ps1" -Raw
+            # Should work for both domain and workgroup by using same construction logic
+            $functionContent | Should -Match 'if.*\$userDomain.*-ne.*N/A'
+        }
+    }
+    
+    Context "v1.0.7 Bug Fix - LogonType Regex" {
+        It "Should not require trailing space in LogonType regex" {
+            $functionContent = Get-Content "$ModulePath\Get-RDPForensics.ps1" -Raw
+            # Should match 'Logon Type:\s+(10|7|3|5)' WITHOUT trailing \s
+            $functionContent | Should -Match 'Logon Type:\\s\+\(10\|7\|3\|5\)(?!\\s)'
+        }
+    }
+    
+    Context "v1.0.7 Bug Fix - Secondary Correlation Type Conversion" {
+        It "Should use [double]::MaxValue instead of [TimeSpan]::MaxValue" {
+            $functionContent = Get-Content "$ModulePath\Get-RDPForensics.ps1" -Raw
+            $functionContent | Should -Match '\[double\]::MaxValue'
+            $functionContent | Should -Not -Match '\[TimeSpan\]::MaxValue'
+        }
+    }
+    
+    Context "v1.0.7 Enhancement - Synchronized Event Detection" {
+        It "Should count synchronized events between SessionID and LogonID sessions" {
+            $functionContent = Get-Content "$ModulePath\Get-RDPForensics.ps1" -Raw
+            $functionContent | Should -Match 'synchronizedCount|synchronized.*count'
+        }
+        
+        It "Should require minimum 2 synchronized events for merge" {
+            $functionContent = Get-Content "$ModulePath\Get-RDPForensics.ps1" -Raw
+            $functionContent | Should -Match 'synchronizedCount.*-ge.*2'
+        }
+        
+        It "Should check events within 3 second window" {
+            $functionContent = Get-Content "$ModulePath\Get-RDPForensics.ps1" -Raw
+            $functionContent | Should -Match 'TotalSeconds.*-le.*3'
+        }
+        
+        It "Should pick LogonID session with most synchronized events" {
+            $functionContent = Get-Content "$ModulePath\Get-RDPForensics.ps1" -Raw
+            $functionContent | Should -Match 'bestMatchScore'
+        }
+        
+        It "Should check for RDP event types (4624/4778/4779) in LogonID sessions" {
+            $functionContent = Get-Content "$ModulePath\Get-RDPForensics.ps1" -Raw
+            $functionContent | Should -Match '4624.*4778.*4779'
+        }
+    }
 }
+

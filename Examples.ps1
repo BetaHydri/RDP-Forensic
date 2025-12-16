@@ -450,6 +450,198 @@ Write-Host ""
 Write-Host "✓ Test complete! Sessions should show better correlation in v1.0.7" -ForegroundColor Green
 #>
 
+# ============================================================================
+# SCENARIO 14: Filter by LogonID (NEW in v1.0.7)
+# ============================================================================
+<#
+Write-Host "SCENARIO 14: Filter Specific Session by LogonID" -ForegroundColor Green
+Write-Host "Use the new -LogonID parameter to analyze a specific Security log session"
+Write-Host ""
+
+# First, get all sessions to find LogonIDs
+Write-Host "Step 1: Get all sessions and list LogonIDs" -ForegroundColor Cyan
+$sessions = .\Get-RDPForensics.ps1 -StartDate (Get-Date).AddHours(-4) -GroupBySession
+$sessions | Select-Object CorrelationKey, User, @{N='Events';E={$_.Events.Count}}, Duration | 
+    Format-Table -AutoSize
+
+# Pick a specific LogonID to investigate
+Write-Host "`nStep 2: Investigate specific LogonID session" -ForegroundColor Cyan
+$targetLogonID = $sessions[0].LogonID  # Or manually specify: '0x6950A4'
+Write-Host "Filtering for LogonID: $targetLogonID" -ForegroundColor Yellow
+Write-Host ""
+
+# Get detailed view of this specific session
+.\Get-RDPForensics.ps1 -StartDate (Get-Date).AddHours(-4) -GroupBySession -LogonID $targetLogonID
+
+Write-Host "`nUse Case: Forensic analysis of specific authentication event" -ForegroundColor Green
+Write-Host "  ✓ Direct access to session by Security log identifier" -ForegroundColor Gray
+Write-Host "  ✓ No need for Where-Object pipelines" -ForegroundColor Gray
+Write-Host "  ✓ Cleaner syntax for incident response" -ForegroundColor Gray
+#>
+
+# ============================================================================
+# SCENARIO 15: Filter by SessionID (NEW in v1.0.7)
+# ============================================================================
+<#
+Write-Host "SCENARIO 15: Filter Specific Session by SessionID" -ForegroundColor Green
+Write-Host "Use the new -SessionID parameter to analyze a specific TerminalServices session"
+Write-Host ""
+
+# First, get all sessions to find SessionIDs
+Write-Host "Step 1: Get all sessions and list SessionIDs" -ForegroundColor Cyan
+$sessions = .\Get-RDPForensics.ps1 -StartDate (Get-Date).AddHours(-4) -GroupBySession
+$sessions | Select-Object CorrelationKey, User, SessionID, @{N='Events';E={$_.Events.Count}}, Duration | 
+    Format-Table -AutoSize
+
+# Pick a specific SessionID to investigate
+Write-Host "`nStep 2: Investigate specific SessionID session" -ForegroundColor Cyan
+$targetSessionID = '5'  # TerminalServices session ID
+Write-Host "Filtering for SessionID: $targetSessionID" -ForegroundColor Yellow
+Write-Host ""
+
+# Get detailed view of this specific session
+.\Get-RDPForensics.ps1 -StartDate (Get-Date).AddHours(-4) -GroupBySession -SessionID $targetSessionID
+
+Write-Host "`nUse Case: Troubleshoot specific RDP session number" -ForegroundColor Green
+Write-Host "  ✓ Match terminal session ID from user complaints" -ForegroundColor Gray
+Write-Host "  ✓ Correlate with task manager session ID" -ForegroundColor Gray
+Write-Host "  ✓ Quick session lookup for support scenarios" -ForegroundColor Gray
+#>
+
+# ============================================================================
+# SCENARIO 16: Domain Controller Correlation Testing (NEW in v1.0.7)
+# ============================================================================
+<#
+Write-Host "SCENARIO 16: Test Domain Controller Session Correlation" -ForegroundColor Green
+Write-Host "Verify v1.0.7 fixes for 4624 event parsing on Domain Controllers"
+Write-Host ""
+
+Write-Host "Testing improved DC correlation:" -ForegroundColor Cyan
+Write-Host "  • 4624 events now extract from 'New Logon:' section (not 'Subject:')" -ForegroundColor Yellow
+Write-Host "  • Username format: DOMAIN\User (consistent with TerminalServices)" -ForegroundColor Yellow
+Write-Host "  • LogonID extracted correctly (not '0x0' SYSTEM account)" -ForegroundColor Yellow
+Write-Host ""
+
+# Run on Domain Controller
+$sessions = .\Get-RDPForensics.ps1 -StartDate (Get-Date).AddHours(-5) `
+    -Username "contoso\administrator" `
+    -GroupBySession
+
+Write-Host "Expected Results:" -ForegroundColor Green
+Write-Host "  ✓ Sessions show as 'LogonID:0x...' (not 'SessionID:...')" -ForegroundColor Gray
+Write-Host "  ✓ Complete duration tracking (not 00:00:00)" -ForegroundColor Gray
+Write-Host "  ✓ Multiple events per session (merged correlation)" -ForegroundColor Gray
+Write-Host "  ✓ User format: 'CONTOSO\administrator' (not '-' or bare username)" -ForegroundColor Gray
+Write-Host ""
+
+# Validate session properties
+$sessions | ForEach-Object {
+    Write-Host "Session: $($_.CorrelationKey)" -ForegroundColor White
+    Write-Host "  User: $($_.User) $(if($_.User -notmatch '\\'){Write-Host '❌ Missing domain prefix' -ForegroundColor Red}else{Write-Host '✓' -ForegroundColor Green})"
+    Write-Host "  LogonID: $($_.LogonID) $(if($_.LogonID -eq '0x0'){Write-Host '❌ Wrong LogonID (SYSTEM)' -ForegroundColor Red}else{Write-Host '✓' -ForegroundColor Green})"
+    Write-Host "  Events: $($_.Events.Count) $(if($_.Events.Count -lt 3){Write-Host '⚠️ Low event count' -ForegroundColor Yellow}else{Write-Host '✓' -ForegroundColor Green})"
+    Write-Host "  Duration: $($_.Duration) $(if($_.Duration.TotalSeconds -eq 0 -and $_.Events.Count -gt 1){Write-Host '❌ No duration calc' -ForegroundColor Red}else{Write-Host '✓' -ForegroundColor Green})"
+    Write-Host ""
+}
+
+Write-Host "✓ Domain Controller correlation test complete" -ForegroundColor Green
+#>
+
+# ============================================================================
+# SCENARIO 17: Workgroup Server Correlation Testing (NEW in v1.0.7)
+# ============================================================================
+<#
+Write-Host "SCENARIO 17: Test Workgroup Server Session Correlation" -ForegroundColor Green
+Write-Host "Verify v1.0.7 synchronized event detection on workgroup servers"
+Write-Host ""
+
+Write-Host "Testing workgroup correlation:" -ForegroundColor Cyan
+Write-Host "  • Synchronized event detection (2+ events within 3 seconds)" -ForegroundColor Yellow
+Write-Host "  • Username format: COMPUTERNAME\User" -ForegroundColor Yellow
+Write-Host "  • SessionID + LogonID session merging" -ForegroundColor Yellow
+Write-Host ""
+
+# Run on Workgroup Server
+$beforeCount = (.\Get-RDPForensics.ps1 -StartDate (Get-Date).AddHours(-5) -GroupBySession | 
+    Measure-Object).Count
+
+Write-Host "Session count: $beforeCount" -ForegroundColor White
+
+# Filter for administrator
+$sessions = .\Get-RDPForensics.ps1 -StartDate (Get-Date).AddHours(-5) `
+    -Username "administrator" `
+    -GroupBySession
+
+Write-Host "Administrator sessions: $($sessions.Count)" -ForegroundColor White
+Write-Host ""
+
+Write-Host "Expected Results:" -ForegroundColor Green
+Write-Host "  ✓ Fewer sessions than v1.0.6 (merge reduces count)" -ForegroundColor Gray
+Write-Host "  ✓ Merged session has 10+ events (SessionID + LogonID combined)" -ForegroundColor Gray
+Write-Host "  ✓ User format: 'COMPUTERNAME\Administrator'" -ForegroundColor Gray
+Write-Host "  ✓ Complete duration tracking despite event gaps" -ForegroundColor Gray
+Write-Host ""
+
+# Validate merged sessions
+$sessions | ForEach-Object {
+    Write-Host "Session: $($_.CorrelationKey)" -ForegroundColor White
+    Write-Host "  User: $($_.User)"
+    Write-Host "  SessionID: $($_.SessionID) $(if($_.SessionID -and $_.SessionID -ne 'N/A'){Write-Host '✓ Has SessionID' -ForegroundColor Green})"
+    Write-Host "  LogonID: $($_.LogonID) $(if($_.LogonID -and $_.LogonID -ne 'N/A'){Write-Host '✓ Has LogonID' -ForegroundColor Green})"
+    Write-Host "  Events: $($_.Events.Count) $(if($_.Events.Count -ge 10){Write-Host '✓ Merged session' -ForegroundColor Green}else{Write-Host '⚠️ May not be merged' -ForegroundColor Yellow})"
+    Write-Host "  Duration: $($_.Duration)"
+    
+    # Check for synchronized events
+    $terminalServices = ($_.Events | Where-Object { $_.EventID -in 21,22,23,24,25,39,40 }).Count
+    $security = ($_.Events | Where-Object { $_.EventID -in 4624,4778,4779,4634,4647 }).Count
+    
+    Write-Host "  TerminalServices events: $terminalServices"
+    Write-Host "  Security events: $security"
+    if ($terminalServices -gt 0 -and $security -gt 0) {
+        Write-Host "  ✓ Successfully merged SessionID + LogonID" -ForegroundColor Green
+    }
+    Write-Host ""
+}
+
+Write-Host "✓ Workgroup server correlation test complete" -ForegroundColor Green
+#>
+
+# ============================================================================
+# SCENARIO 18: Combine New Filters (NEW in v1.0.7)
+# ============================================================================
+<#
+Write-Host "SCENARIO 18: Combine Multiple Filters" -ForegroundColor Green
+Write-Host "Demonstrate combining new LogonID/SessionID filters with existing filters"
+Write-Host ""
+
+# Example 1: Username + LogonID
+Write-Host "Example 1: Filter by Username AND LogonID" -ForegroundColor Cyan
+.\Get-RDPForensics.ps1 -StartDate (Get-Date).AddHours(-4) `
+    -Username "administrator" `
+    -LogonID "0x6950A4" `
+    -GroupBySession
+
+# Example 2: Source IP + SessionID
+Write-Host "`nExample 2: Filter by Source IP AND SessionID" -ForegroundColor Cyan
+.\Get-RDPForensics.ps1 -StartDate (Get-Date).AddHours(-4) `
+    -SourceIP "172.16.0.2" `
+    -SessionID "5" `
+    -GroupBySession
+
+# Example 3: Export specific session
+Write-Host "`nExample 3: Export Specific Session by LogonID" -ForegroundColor Cyan
+$reportPath = "C:\RDP_Reports\SpecificSession"
+.\Get-RDPForensics.ps1 -StartDate (Get-Date).AddDays(-1) `
+    -LogonID "0x6950A4" `
+    -GroupBySession `
+    -ExportPath $reportPath
+
+Write-Host "`nUse Cases:" -ForegroundColor Green
+Write-Host "  ✓ Forensic analysis: Narrow down to exact session" -ForegroundColor Gray
+Write-Host "  ✓ Incident response: Quick session export for evidence" -ForegroundColor Gray
+Write-Host "  ✓ Troubleshooting: Isolate specific user's session" -ForegroundColor Gray
+#>
+
 Write-Host "`nTo run an example, uncomment the desired scenario in this file and run again." -ForegroundColor Cyan
 Write-Host "Example scenarios available:" -ForegroundColor Yellow
 Write-Host "  1. Daily Security Review" -ForegroundColor Gray
@@ -464,5 +656,10 @@ Write-Host "  9. Monthly Executive Report" -ForegroundColor Gray
 Write-Host " 10. Incident Response - Full Investigation" -ForegroundColor Gray
 Write-Host " 11. Real-Time Session Monitoring (Auto-Refresh)" -ForegroundColor Gray
 Write-Host " 12. Session Correlation & Lifecycle Analysis" -ForegroundColor Gray
-Write-Host " 13. Test v1.0.7 Enhanced Correlation (NEW)" -ForegroundColor Green
+Write-Host " 13. Test v1.0.7 Enhanced Correlation" -ForegroundColor Gray
+Write-Host " 14. Filter by LogonID (NEW in v1.0.7)" -ForegroundColor Green
+Write-Host " 15. Filter by SessionID (NEW in v1.0.7)" -ForegroundColor Green
+Write-Host " 16. Domain Controller Correlation Testing (NEW in v1.0.7)" -ForegroundColor Green
+Write-Host " 17. Workgroup Server Correlation Testing (NEW in v1.0.7)" -ForegroundColor Green
+Write-Host " 18. Combine New Filters (NEW in v1.0.7)" -ForegroundColor Green
 Write-Host ""
