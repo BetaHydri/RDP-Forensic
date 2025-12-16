@@ -232,7 +232,8 @@ function Get-CurrentRDPSessions {
                 switch ($InfoClass) {
                     ([WTS_INFO_CLASS]::WTSClientAddress) {
                         $clientAddr = [System.Runtime.InteropServices.Marshal]::PtrToStructure($buffer, [Type][WTS_CLIENT_ADDRESS])
-                        if ($clientAddr.AddressFamily -eq 2) {  # AF_INET (IPv4)
+                        if ($clientAddr.AddressFamily -eq 2) {
+                            # AF_INET (IPv4)
                             return "$($clientAddr.Address[2]).$($clientAddr.Address[3]).$($clientAddr.Address[4]).$($clientAddr.Address[5])"
                         }
                         return "Unknown"
@@ -240,8 +241,8 @@ function Get-CurrentRDPSessions {
                     ([WTS_INFO_CLASS]::WTSClientDisplay) {
                         $display = [System.Runtime.InteropServices.Marshal]::PtrToStructure($buffer, [Type][WTS_CLIENT_DISPLAY])
                         return [PSCustomObject]@{
-                            Width = $display.HorizontalResolution
-                            Height = $display.VerticalResolution
+                            Width      = $display.HorizontalResolution
+                            Height     = $display.VerticalResolution
                             ColorDepth = $display.ColorDepth
                         }
                     }
@@ -379,20 +380,21 @@ function Get-CurrentRDPSessions {
                             if ($idleMinutes -lt 1) { "<1 min" }
                             elseif ($idleMinutes -lt 60) { "$idleMinutes min" }
                             else { "$([Math]::Floor($idleMinutes / 60))h $($idleMinutes % 60)m" }
-                        } else { "N/A" }
+                        }
+                        else { "N/A" }
                         
                         $sessionObjects += [PSCustomObject]@{
-                            SessionName = $sessionName
-                            Username = if ($username) { $username } else { 'N/A' }
-                            ID = $sessionInfo.SessionId
-                            State = $stateDisplay
-                            Type = 'RDP'
-                            ClientName = if ($clientName) { $clientName } else { 'N/A' }
-                            ClientIP = if ($clientIP) { $clientIP } else { 'Unknown' }
-                            ClientBuild = if ($clientBuild) { $clientBuild } else { 'N/A' }
+                            SessionName   = $sessionName
+                            Username      = if ($username) { $username } else { 'N/A' }
+                            ID            = $sessionInfo.SessionId
+                            State         = $stateDisplay
+                            Type          = 'RDP'
+                            ClientName    = if ($clientName) { $clientName } else { 'N/A' }
+                            ClientIP      = if ($clientIP) { $clientIP } else { 'Unknown' }
+                            ClientBuild   = if ($clientBuild) { $clientBuild } else { 'N/A' }
                             ClientDisplay = if ($clientDisplay) { "$($clientDisplay.Width)x$($clientDisplay.Height) ($($clientDisplay.ColorDepth)bit)" } else { 'N/A' }
-                            IdleTime = $idleTimeDisplay
-                            ConnectTime = if ($connectTime) { $connectTime } else { $null }
+                            IdleTime      = $idleTimeDisplay
+                            ConnectTime   = if ($connectTime) { $connectTime } else { $null }
                         }
                     }
                 }
@@ -403,129 +405,129 @@ function Get-CurrentRDPSessions {
                 }
             }
         
-                # Log changes if logging is enabled
-                if ($logFile -and $iterationCount -gt 0) {
-                    $currentSessionKeys = @{}
+            # Log changes if logging is enabled
+            if ($logFile -and $iterationCount -gt 0) {
+                $currentSessionKeys = @{}
                 
-                    foreach ($session in $sessionObjects) {
-                        $key = "$($session.SessionName)-$($session.ID)"
-                        $currentSessionKeys[$key] = $session
+                foreach ($session in $sessionObjects) {
+                    $key = "$($session.SessionName)-$($session.ID)"
+                    $currentSessionKeys[$key] = $session
                     
-                        # Check for new sessions or state changes
-                        if (-not $previousSessions.ContainsKey($key)) {
-                            # New session detected
-                            $logEntry = "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss'),NEW_SESSION,$($session.SessionName),$($session.Username),$($session.ID),$($session.State),$($session.ClientIP),$($session.ClientName),$($session.ClientBuild),$($session.IdleTime),New RDP session detected"
-                            $logEntry | Out-File -FilePath $logFile -Append -Encoding UTF8
-                            Write-Host "  [LOG] New session: $($session.Username) from $($session.ClientIP) (ID: $($session.ID))" -ForegroundColor Green
-                        }
-                        elseif ($previousSessions[$key].State -ne $session.State) {
-                            # State change detected
-                            $logEntry = "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss'),STATE_CHANGE,$($session.SessionName),$($session.Username),$($session.ID),$($session.State),$($session.ClientIP),$($session.ClientName),$($session.ClientBuild),$($session.IdleTime),State changed from $($previousSessions[$key].State) to $($session.State)"
-                            $logEntry | Out-File -FilePath $logFile -Append -Encoding UTF8
-                            Write-Host "  [LOG] State change: $($session.Username) - $($previousSessions[$key].State) -> $($session.State)" -ForegroundColor Yellow
-                        }
-                    }
-                
-                    # Check for disconnected/removed sessions
-                    foreach ($key in $previousSessions.Keys) {
-                        if (-not $currentSessionKeys.ContainsKey($key)) {
-                            $oldSession = $previousSessions[$key]
-                            $logEntry = "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss'),SESSION_ENDED,$($oldSession.SessionName),$($oldSession.Username),$($oldSession.ID),$($oldSession.State),$($oldSession.ClientIP),$($oldSession.ClientName),$($oldSession.ClientBuild),$($oldSession.IdleTime),Session ended or disconnected"
-                            $logEntry | Out-File -FilePath $logFile -Append -Encoding UTF8
-                            Write-Host "  [LOG] Session ended: $($oldSession.Username) from $($oldSession.ClientIP) (ID: $($oldSession.ID))" -ForegroundColor Red
-                        }
-                    }
-                
-                    # Update previous sessions tracking
-                    $previousSessions = $currentSessionKeys
-                }
-                elseif ($logFile -and $iterationCount -eq 0) {
-                    # First iteration - just record initial state
-                    foreach ($session in $sessionObjects) {
-                        $key = "$($session.SessionName)-$($session.ID)"
-                        $previousSessions[$key] = $session
-                        $logEntry = "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss'),INITIAL_STATE,$($session.SessionName),$($session.Username),$($session.ID),$($session.State),$($session.ClientIP),$($session.ClientName),$($session.ClientBuild),$($session.IdleTime),Monitoring started - session already active"
+                    # Check for new sessions or state changes
+                    if (-not $previousSessions.ContainsKey($key)) {
+                        # New session detected
+                        $logEntry = "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss'),NEW_SESSION,$($session.SessionName),$($session.Username),$($session.ID),$($session.State),$($session.ClientIP),$($session.ClientName),$($session.ClientBuild),$($session.IdleTime),New RDP session detected"
                         $logEntry | Out-File -FilePath $logFile -Append -Encoding UTF8
+                        Write-Host "  [LOG] New session: $($session.Username) from $($session.ClientIP) (ID: $($session.ID))" -ForegroundColor Green
+                    }
+                    elseif ($previousSessions[$key].State -ne $session.State) {
+                        # State change detected
+                        $logEntry = "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss'),STATE_CHANGE,$($session.SessionName),$($session.Username),$($session.ID),$($session.State),$($session.ClientIP),$($session.ClientName),$($session.ClientBuild),$($session.IdleTime),State changed from $($previousSessions[$key].State) to $($session.State)"
+                        $logEntry | Out-File -FilePath $logFile -Append -Encoding UTF8
+                        Write-Host "  [LOG] State change: $($session.Username) - $($previousSessions[$key].State) -> $($session.State)" -ForegroundColor Yellow
                     }
                 }
+                
+                # Check for disconnected/removed sessions
+                foreach ($key in $previousSessions.Keys) {
+                    if (-not $currentSessionKeys.ContainsKey($key)) {
+                        $oldSession = $previousSessions[$key]
+                        $logEntry = "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss'),SESSION_ENDED,$($oldSession.SessionName),$($oldSession.Username),$($oldSession.ID),$($oldSession.State),$($oldSession.ClientIP),$($oldSession.ClientName),$($oldSession.ClientBuild),$($oldSession.IdleTime),Session ended or disconnected"
+                        $logEntry | Out-File -FilePath $logFile -Append -Encoding UTF8
+                        Write-Host "  [LOG] Session ended: $($oldSession.Username) from $($oldSession.ClientIP) (ID: $($oldSession.ID))" -ForegroundColor Red
+                    }
+                }
+                
+                # Update previous sessions tracking
+                $previousSessions = $currentSessionKeys
+            }
+            elseif ($logFile -and $iterationCount -eq 0) {
+                # First iteration - just record initial state
+                foreach ($session in $sessionObjects) {
+                    $key = "$($session.SessionName)-$($session.ID)"
+                    $previousSessions[$key] = $session
+                    $logEntry = "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss'),INITIAL_STATE,$($session.SessionName),$($session.Username),$($session.ID),$($session.State),$($session.ClientIP),$($session.ClientName),$($session.ClientBuild),$($session.IdleTime),Monitoring started - session already active"
+                    $logEntry | Out-File -FilePath $logFile -Append -Encoding UTF8
+                }
+            }
         
-                if ($sessionObjects.Count -gt 0) {
-                    Write-Host "`n" -NoNewline
-                    Write-Host "──────────────────────────────────────────" -ForegroundColor DarkGreen
-                    Write-Host "$(Get-Emoji 'user') ACTIVE SESSIONS (" -ForegroundColor Yellow -NoNewline
-                    Write-Host "$($sessionObjects.Count)" -ForegroundColor White -NoNewline
-                    Write-Host ")" -ForegroundColor Yellow
-                    $separator = [string][char]0x2500
-                    Write-Host ($separator * 42) -ForegroundColor DarkGreen
+            if ($sessionObjects.Count -gt 0) {
+                Write-Host "`n" -NoNewline
+                Write-Host "──────────────────────────────────────────" -ForegroundColor DarkGreen
+                Write-Host "$(Get-Emoji 'user') ACTIVE SESSIONS (" -ForegroundColor Yellow -NoNewline
+                Write-Host "$($sessionObjects.Count)" -ForegroundColor White -NoNewline
+                Write-Host ")" -ForegroundColor Yellow
+                $separator = [string][char]0x2500
+                Write-Host ($separator * 42) -ForegroundColor DarkGreen
                     
-                    # Display sessions with extended properties
-                    $sessionObjects | Select-Object SessionName, Username, ID, State, ClientIP, ClientName, IdleTime, ClientBuild, ClientDisplay | Format-Table -AutoSize
+                # Display sessions with extended properties
+                $sessionObjects | Select-Object SessionName, Username, ID, State, ClientIP, ClientName, IdleTime, ClientBuild, ClientDisplay | Format-Table -AutoSize
             
-                    # Show processes for specific session or all if requested
-                    if ($ShowProcesses) {
-                        if ($SessionID) {
-                            $targetSessions = $sessionObjects | Where-Object { $_.ID -eq $SessionID }
-                        }
-                        else {
-                            $targetSessions = $sessionObjects
-                        }
-                
-                        foreach ($session in $targetSessions) {
-                            Write-Host "`n$(Get-Emoji 'computer') Processes for Session " -ForegroundColor Yellow -NoNewline
-                            Write-Host "$($session.ID)" -ForegroundColor White -NoNewline
-                            Write-Host " - User: " -ForegroundColor Yellow -NoNewline
-                            Write-Host "$($session.Username)" -ForegroundColor Cyan
-                    
-                            try {
-                                $processes = qprocess /id:$($session.ID) 2>$null
-                                if ($processes) {
-                                    $processes | Select-Object -Skip 1 | ForEach-Object {
-                                        Write-Host "  $_" -ForegroundColor Gray
-                                    }
-                                }
-                                else {
-                                    Write-Host "  No processes found or unable to query" -ForegroundColor Gray
-                                }
-                            }
-                            catch {
-                                Write-Host "  Error querying processes: $_" -ForegroundColor Red
-                            }
-                        }
+                # Show processes for specific session or all if requested
+                if ($ShowProcesses) {
+                    if ($SessionID) {
+                        $targetSessions = $sessionObjects | Where-Object { $_.ID -eq $SessionID }
                     }
-            
-                    # Get recent logon events for active users
-                    Write-Host "`n" -NoNewline
-                    Write-Host "──────────────────────────────────────────" -ForegroundColor DarkGreen
-                    Write-Host "$(Get-Emoji 'chart') RECENT LOGON INFORMATION" -ForegroundColor Yellow
-                    Write-Host "──────────────────────────────────────────" -ForegroundColor DarkGreen
-                    foreach ($session in $sessionObjects | Where-Object { $_.Username -ne 'N/A' }) {
-                        $recentLogon = Get-WinEvent -FilterHashtable @{
-                            LogName = 'Security'
-                            Id      = 4624
-                        } -MaxEvents 100 -ErrorAction SilentlyContinue | Where-Object {
-                            $_.Message -match $session.Username -and $_.Message -match 'Logon Type:\s+(10|7)\s'
-                        } | Select-Object -First 1
+                    else {
+                        $targetSessions = $sessionObjects
+                    }
                 
-                        if ($recentLogon) {
-                            $sourceIP = if ($recentLogon.Message -match 'Source Network Address:\s+([^\r\n]+)') { 
-                                $matches[1].Trim() 
-                            }
-                            else { 
-                                'N/A' 
-                            }
+                    foreach ($session in $targetSessions) {
+                        Write-Host "`n$(Get-Emoji 'computer') Processes for Session " -ForegroundColor Yellow -NoNewline
+                        Write-Host "$($session.ID)" -ForegroundColor White -NoNewline
+                        Write-Host " - User: " -ForegroundColor Yellow -NoNewline
+                        Write-Host "$($session.Username)" -ForegroundColor Cyan
                     
-                            Write-Host "  $(Get-Emoji 'check') " -ForegroundColor Green -NoNewline
-                            Write-Host "$($session.Username)" -ForegroundColor Cyan -NoNewline
-                            Write-Host " - Last logon: " -ForegroundColor Gray -NoNewline
-                            Write-Host "$($recentLogon.TimeCreated)" -ForegroundColor White -NoNewline
-                            Write-Host " from " -ForegroundColor Gray -NoNewline
-                            Write-Host "$sourceIP" -ForegroundColor Yellow
+                        try {
+                            $processes = qprocess /id:$($session.ID) 2>$null
+                            if ($processes) {
+                                $processes | Select-Object -Skip 1 | ForEach-Object {
+                                    Write-Host "  $_" -ForegroundColor Gray
+                                }
+                            }
+                            else {
+                                Write-Host "  No processes found or unable to query" -ForegroundColor Gray
+                            }
+                        }
+                        catch {
+                            Write-Host "  Error querying processes: $_" -ForegroundColor Red
                         }
                     }
                 }
-                else {
-                    Write-Host "$(Get-Emoji 'warning') No active RDP sessions found." -ForegroundColor Yellow
+            
+                # Get recent logon events for active users
+                Write-Host "`n" -NoNewline
+                Write-Host "──────────────────────────────────────────" -ForegroundColor DarkGreen
+                Write-Host "$(Get-Emoji 'chart') RECENT LOGON INFORMATION" -ForegroundColor Yellow
+                Write-Host "──────────────────────────────────────────" -ForegroundColor DarkGreen
+                foreach ($session in $sessionObjects | Where-Object { $_.Username -ne 'N/A' }) {
+                    $recentLogon = Get-WinEvent -FilterHashtable @{
+                        LogName = 'Security'
+                        Id      = 4624
+                    } -MaxEvents 100 -ErrorAction SilentlyContinue | Where-Object {
+                        $_.Message -match $session.Username -and $_.Message -match 'Logon Type:\s+(10|7)\s'
+                    } | Select-Object -First 1
+                
+                    if ($recentLogon) {
+                        $sourceIP = if ($recentLogon.Message -match 'Source Network Address:\s+([^\r\n]+)') { 
+                            $matches[1].Trim() 
+                        }
+                        else { 
+                            'N/A' 
+                        }
+                    
+                        Write-Host "  $(Get-Emoji 'check') " -ForegroundColor Green -NoNewline
+                        Write-Host "$($session.Username)" -ForegroundColor Cyan -NoNewline
+                        Write-Host " - Last logon: " -ForegroundColor Gray -NoNewline
+                        Write-Host "$($recentLogon.TimeCreated)" -ForegroundColor White -NoNewline
+                        Write-Host " from " -ForegroundColor Gray -NoNewline
+                        Write-Host "$sourceIP" -ForegroundColor Yellow
+                    }
                 }
+            }
+            else {
+                Write-Host "$(Get-Emoji 'warning') No active RDP sessions found." -ForegroundColor Yellow
+            }
         }
         catch {
             Write-Error "Error getting session information: $_"
