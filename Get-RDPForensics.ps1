@@ -502,6 +502,9 @@ function Get-RDPForensics {
             [DateTime]$End,
             [bool]$IncludeKerberosAndNTLM = $false
         )
+        
+        # Initialize debug counter
+        $script:debugLogonIDCount = 0
     
         $eventList = if ($IncludeKerberosAndNTLM) { "4624, 4625, 4768-4772, 4776" } else { "4624, 4625" }
         Write-Host "$(Get-Emoji 'key') [2/7] Collecting RDP Authentication Events (EventID $eventList)..." -ForegroundColor Yellow
