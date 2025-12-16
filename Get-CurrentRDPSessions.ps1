@@ -350,7 +350,8 @@ function Get-CurrentRDPSessions {
                     $offset = [IntPtr]::Add($sessionInfoPtr, $i * $sessionInfoSize)
                     $sessionInfo = [System.Runtime.InteropServices.Marshal]::PtrToStructure($offset, [Type][WTS_SESSION_INFO])
                     
-                    $sessionName = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($sessionInfo.pWinStationName)
+                    # WTS API returns Unicode strings - use PtrToStringUni explicitly
+                    $sessionName = [System.Runtime.InteropServices.Marshal]::PtrToStringUni($sessionInfo.pWinStationName)
                     $state = $sessionInfo.State.ToString()
                     
                     # DEBUG: Show all sessions
