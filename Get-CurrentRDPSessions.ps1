@@ -361,20 +361,21 @@ function Get-CurrentRDPSessions {
                                 if ($idleMinutes -lt 1) { "<1 min" }
                                 elseif ($idleMinutes -lt 60) { "$idleMinutes min" }
                                 else { "$([Math]::Floor($idleMinutes / 60))h $($idleMinutes % 60)m" }
-                            } else { "N/A" }
+                            }
+                            else { "N/A" }
                             
                             $sessionObjects += [PSCustomObject]@{
-                                SessionName = $sessionName
-                                Username = if ($username -and $username -ne '') { $username } else { 'N/A' }
-                                ID = $id
-                                State = $state
-                                Type = 'RDP'
-                                ClientName = if ($clientName) { $clientName } else { 'N/A' }
-                                ClientIP = if ($clientIP) { $clientIP } else { 'Unknown' }
-                                ClientBuild = if ($clientBuild) { $clientBuild } else { 'N/A' }
+                                SessionName   = $sessionName
+                                Username      = if ($username -and $username -ne '') { $username } else { 'N/A' }
+                                ID            = $id
+                                State         = $state
+                                Type          = 'RDP'
+                                ClientName    = if ($clientName) { $clientName } else { 'N/A' }
+                                ClientIP      = if ($clientIP) { $clientIP } else { 'Unknown' }
+                                ClientBuild   = if ($clientBuild) { $clientBuild } else { 'N/A' }
                                 ClientDisplay = if ($clientDisplay) { "$($clientDisplay.Width)x$($clientDisplay.Height) ($($clientDisplay.ColorDepth)bit)" } else { 'N/A' }
-                                IdleTime = $idleTimeDisplay
-                                ConnectTime = if ($connectTime) { $connectTime } else { $null }
+                                IdleTime      = $idleTimeDisplay
+                                ConnectTime   = if ($connectTime) { $connectTime } else { $null }
                             }
                         }
                     }
