@@ -82,6 +82,12 @@ Describe "Get-CurrentRDPSessions.ps1 - Script Validation" {
             Where-Object { $_.Name.VariablePath.UserPath -eq 'RefreshInterval' }
             $paramBlock.DefaultValue.Value | Should -Be 5
         }
+
+        It "Should accept LogPath parameter" {
+            $params = (Get-Command Get-CurrentRDPSessions).Parameters
+            $params.ContainsKey('LogPath') | Should -Be $true
+            $params['LogPath'].ParameterType.Name | Should -Be 'String'
+        }
     }
 }
 
@@ -100,6 +106,57 @@ Describe "Get-CurrentRDPSessions.ps1 - Functionality" {
     Context "Process Query" {
         It "Should query processes with ShowProcesses switch" {
             { Get-CurrentRDPSessions -ShowProcesses -ErrorAction Stop } | Should -Not -Throw
+        }
+    }
+}
+
+Describe "Get-CurrentRDPSessions.ps1 - Logging Feature" {
+    
+    BeforeAll {
+        $script:TestLogPath = Join-Path $PSScriptRoot "TestLogs"
+    }
+
+    AfterEach {
+        if (Test-Path $script:TestLogPath) {
+            Remove-Item -Path $script:TestLogPath -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+
+    Context "Log File Creation" {
+        It "Should create log directory if it doesn't exist" {
+            Get-CurrentRDPSessions -LogPath $script:TestLogPath -ErrorAction Stop
+            Test-Path $script:TestLogPath | Should -Be $true
+        }
+
+        It "Should create timestamped CSV log file" {
+            Get-CurrentRDPSessions -LogPath $script:TestLogPath -ErrorAction Stop
+            $logFiles = Get-ChildItem -Path $script:TestLogPath -Filter "RDP_SessionMonitor_*.csv"
+            $logFiles.Count | Should -BeGreaterThan 0
+        }
+
+        It "Should create CSV with correct header" {
+            Get-CurrentRDPSessions -LogPath $script:TestLogPath -ErrorAction Stop
+            $logFile = Get-ChildItem -Path $script:TestLogPath -Filter "RDP_SessionMonitor_*.csv" | Select-Object -First 1
+            $header = Get-Content $logFile.FullName -First 1
+            $header | Should -Match 'Timestamp,EventType,SessionName,Username,SessionID,State,SourceIP,Details'
+        }
+    }
+
+    Context "Logging Functionality" {
+        It "Should accept LogPath parameter without errors" {
+            { Get-CurrentRDPSessions -LogPath $script:TestLogPath -ErrorAction Stop } | Should -Not -Throw
+        }
+
+        It "Should work with LogPath and ShowProcesses together" {
+            { Get-CurrentRDPSessions -LogPath $script:TestLogPath -ShowProcesses -ErrorAction Stop } | Should -Not -Throw
+        }
+
+        It "Should create valid CSV content" {
+            Get-CurrentRDPSessions -LogPath $script:TestLogPath -ErrorAction Stop
+            $logFile = Get-ChildItem -Path $script:TestLogPath -Filter "RDP_SessionMonitor_*.csv" | Select-Object -First 1
+            $content = Get-Content $logFile.FullName -Raw
+            $content | Should -Not -BeNullOrEmpty
+            $content | Should -Match 'Timestamp.*EventType.*SessionName'
         }
     }
 }

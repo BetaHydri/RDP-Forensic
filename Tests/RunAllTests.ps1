@@ -80,7 +80,9 @@ $pesterConfig = New-PesterConfiguration
 # Test discovery
 $pesterConfig.Run.Path = $TestsPath
 $pesterConfig.Run.PassThru = $true
-$pesterConfig.Run.Exit = $CI
+if ($CI) {
+    $pesterConfig.Run.Exit = $true
+}
 
 # Output configuration
 $pesterConfig.Output.Verbosity = 'Detailed'

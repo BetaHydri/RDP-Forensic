@@ -83,6 +83,17 @@ The main forensics analysis cmdlet (Get-RDPForensics) collects and analyzes RDP 
 - Administrator privileges (required to read Security event logs)
 - PowerShell 5.1 or later
 
+**PowerShell 5.1 & 7.x Compatibility:**
+
+This toolkit is fully compatible with both PowerShell 5.1 and 7.x:
+- ✅ **Box Drawing** - Beautiful Unicode borders work in both versions (╔═╗║╚╝)
+- ✅ **Icons** - PS 7.x shows full emoji (💻📊⏱️), PS 5.1 uses Unicode symbols (▣■◔)
+- ✅ **Logging** - UTF-8 encoding without BOM for maximum compatibility
+- ✅ **All Features** - Real-time monitoring, change logging, and forensic analysis work identically
+- ✅ **Performance** - Optimized for Windows Console in both versions
+
+The tool automatically detects your PowerShell version and adapts the output accordingly, ensuring a professional and visually appealing experience regardless of which version you use.
+
 **Installation:**
 
 You can run the scripts directly or import the module for easier access:
