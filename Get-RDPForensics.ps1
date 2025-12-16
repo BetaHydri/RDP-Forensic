@@ -33,7 +33,8 @@ function Get-RDPForensics {
     Include outbound RDP connection logs from the client side.
 
 .PARAMETER GroupBySession
-    Group events by LogonID/SessionID to show correlated session lifecycles.
+    Group events by ActivityID/LogonID/SessionID to show correlated session lifecycles.
+    Uses Windows Event Correlation ActivityID for precise cross-log correlation, with fallback to LogonID and SessionID.
     Displays session summary with duration, lifecycle stages, and completeness indicators.
     Exports to separate CSV file (RDP_Sessions_<timestamp>.csv) when used with -ExportPath.
 
@@ -59,7 +60,7 @@ function Get-RDPForensics {
 
 .NOTES
     Author: Jan Tiedemann
-    Version: 1.0.4
+    Version: 1.0.5
     Based on: https://woshub.com/rdp-connection-logs-forensics-windows/
     Requires: Administrator privileges to read Security event logs
 #>
@@ -130,20 +131,26 @@ function Get-RDPForensics {
         return $emojis[$Name]
     }
 
-    # Function to correlate events across log sources
+    # Function to correlate events across log sources using ActivityID, LogonID, and SessionID
     function Get-CorrelatedSessions {
         param([array]$Events)
 
-        # Group events by LogonID and SessionID
+        # Group events by ActivityID (priority 1), LogonID (priority 2), or SessionID (priority 3)
         $sessionMap = @{}
         
         foreach ($event in $Events) {
-            # Determine correlation key (LogonID or SessionID)
+            # Determine correlation key with priority: ActivityID > LogonID > SessionID
             $correlationKey = $null
             
-            if ($event.LogonID -and $event.LogonID -ne 'N/A' -and $event.LogonID -ne $null) {
+            # Priority 1: Use ActivityID from Correlation element (most accurate cross-log correlation)
+            if ($event.ActivityID -and $event.ActivityID -ne 'N/A' -and $event.ActivityID -ne $null) {
+                $correlationKey = "ActivityID:$($event.ActivityID)"
+            }
+            # Priority 2: Use LogonID from Security log events
+            elseif ($event.LogonID -and $event.LogonID -ne 'N/A' -and $event.LogonID -ne $null) {
                 $correlationKey = "LogonID:$($event.LogonID)"
             }
+            # Priority 3: Use SessionID from TerminalServices events
             elseif ($event.SessionID -and $event.SessionID -ne 'N/A' -and $event.SessionID -ne $null) {
                 $correlationKey = "SessionID:$($event.SessionID)"
             }
@@ -158,6 +165,7 @@ function Get-RDPForensics {
                         StartTime      = $null
                         EndTime        = $null
                         Duration       = $null
+                        ActivityID     = $event.ActivityID
                         LogonID        = $event.LogonID
                         SessionID      = $event.SessionID
                         Lifecycle      = @{
@@ -173,6 +181,17 @@ function Get-RDPForensics {
                 
                 # Add event to session
                 $sessionMap[$correlationKey].Events += $event
+                
+                # Update correlation IDs if not yet set (for sessions grouped by different keys)
+                if (-not $sessionMap[$correlationKey].ActivityID -and $event.ActivityID) {
+                    $sessionMap[$correlationKey].ActivityID = $event.ActivityID
+                }
+                if (-not $sessionMap[$correlationKey].LogonID -and $event.LogonID -and $event.LogonID -ne 'N/A') {
+                    $sessionMap[$correlationKey].LogonID = $event.LogonID
+                }
+                if (-not $sessionMap[$correlationKey].SessionID -and $event.SessionID -and $event.SessionID -ne 'N/A') {
+                    $sessionMap[$correlationKey].SessionID = $event.SessionID
+                }
                 
                 # Track lifecycle stages
                 switch ($event.EventID) {
@@ -211,6 +230,7 @@ function Get-RDPForensics {
             # Create session object
             [PSCustomObject]@{
                 CorrelationKey    = $session.CorrelationKey
+                ActivityID        = $session.ActivityID
                 User              = $session.User
                 SourceIP          = $session.SourceIP
                 LogonID           = $session.LogonID
@@ -246,7 +266,7 @@ function Get-RDPForensics {
     $horizontal = [string][char]0x2550; $vertical = [char]0x2551
     Write-Host "$topLeft$($horizontal * 67)$topRight" -ForegroundColor Cyan
     Write-Host "$vertical" -ForegroundColor Cyan -NoNewline
-    Write-Host "          RDP FORENSICS ANALYSIS TOOL v1.0.4                       " -ForegroundColor White -NoNewline
+    Write-Host "          RDP FORENSICS ANALYSIS TOOL v1.0.5                       " -ForegroundColor White -NoNewline
     Write-Host "$vertical" -ForegroundColor Cyan
     Write-Host "$vertical" -ForegroundColor Cyan -NoNewline
     Write-Host "        Security Investigation & Audit Toolkit                     " -ForegroundColor Yellow -NoNewline
@@ -277,6 +297,13 @@ function Get-RDPForensics {
                 [xml[]]$xml = $events | ForEach-Object { $_.ToXml() }
             
                 $results = foreach ($event in $xml.Event) {
+                    # Extract ActivityID from Correlation element
+                    $activityID = if ($event.System.Correlation.ActivityID) { 
+                        $event.System.Correlation.ActivityID 
+                    } else { 
+                        $null 
+                    }
+                    
                     [PSCustomObject]@{
                         TimeCreated = [DateTime]::Parse($event.System.TimeCreated.SystemTime)
                         EventID     = 1149
@@ -286,6 +313,7 @@ function Get-RDPForensics {
                         SourceIP    = $event.UserData.EventXML.Param3
                         SessionID   = $null
                         LogonID     = $null
+                        ActivityID  = $activityID
                         Details     = "User authentication succeeded"
                     }
                 }
@@ -327,6 +355,14 @@ function Get-RDPForensics {
                 $results = foreach ($event in $events) {
                     $message = $event.Message
                 
+                    # Extract ActivityID from XML
+                    [xml]$eventXml = $event.ToXml()
+                    $activityID = if ($eventXml.Event.System.Correlation.ActivityID) { 
+                        $eventXml.Event.System.Correlation.ActivityID 
+                    } else { 
+                        $null 
+                    }
+                
                     # Parse message using regex
                     $userName = if ($message -match '\s\sAccount Name:\s+([^\r\n]+)') { $matches[1].Trim() } else { 'N/A' }
                     $userDomain = if ($message -match '\s\sAccount Domain:\s+([^\r\n]+)') { $matches[1].Trim() } else { 'N/A' }
@@ -359,6 +395,7 @@ function Get-RDPForensics {
                         SourceIP    = $sourceIP
                         SessionID   = $null
                         LogonID     = $logonID
+                        ActivityID  = $activityID
                         Details     = "$logonTypeDesc | Workstation: $workstation"
                     }
                 }
@@ -399,6 +436,13 @@ function Get-RDPForensics {
                 $results = foreach ($event in $xml.Event) {
                     $eventID = $event.System.EventID
                     $timeCreated = [DateTime]::Parse($event.System.TimeCreated.SystemTime)
+                
+                    # Extract ActivityID from Correlation element
+                    $activityID = if ($event.System.Correlation.ActivityID) { 
+                        $event.System.Correlation.ActivityID 
+                    } else { 
+                        $null 
+                    }
                 
                     # Parse UserData
                     $user = if ($event.UserData.EventXML.User) { $event.UserData.EventXML.User } else { 'N/A' }
@@ -444,6 +488,7 @@ function Get-RDPForensics {
                         SourceIP    = $address
                         SessionID   = $sessionID
                         LogonID     = $null
+                        ActivityID  = $activityID
                         Details     = $details
                     }
                 }
@@ -482,6 +527,14 @@ function Get-RDPForensics {
                 $results = foreach ($event in $events) {
                     $message = $event.Message
                 
+                    # Extract ActivityID from XML
+                    [xml]$eventXml = $event.ToXml()
+                    $activityID = if ($eventXml.Event.System.Correlation.ActivityID) { 
+                        $eventXml.Event.System.Correlation.ActivityID 
+                    } else { 
+                        $null 
+                    }
+                
                     $userName = if ($message -match 'Account Name:\s+([^\r\n]+)') { $matches[1].Trim() } else { 'N/A' }
                     $userDomain = if ($message -match 'Account Domain:\s+([^\r\n]+)') { $matches[1].Trim() } else { 'N/A' }
                     $logonID = if ($message -match 'Logon ID:\s+([^\r\n]+)') { $matches[1].Trim() } else { 'N/A' }
@@ -499,6 +552,7 @@ function Get-RDPForensics {
                         SourceIP    = $sourceIP
                         SessionID   = $sessionName
                         LogonID     = $logonID
+                        ActivityID  = $activityID
                         Details     = "LogonID: $logonID"
                     }
                 }
@@ -550,6 +604,14 @@ function Get-RDPForensics {
                 foreach ($event in $securityEvents) {
                     $message = $event.Message
                 
+                    # Extract ActivityID from XML
+                    [xml]$eventXml = $event.ToXml()
+                    $activityID = if ($eventXml.Event.System.Correlation.ActivityID) { 
+                        $eventXml.Event.System.Correlation.ActivityID 
+                    } else { 
+                        $null 
+                    }
+                
                     $userName = if ($message -match 'Account Name:\s+([^\r\n]+)') { $matches[1].Trim() } else { 'N/A' }
                     $userDomain = if ($message -match 'Account Domain:\s+([^\r\n]+)') { $matches[1].Trim() } else { 'N/A' }
                     $logonID = if ($message -match 'Logon ID:\s+([^\r\n]+)') { $matches[1].Trim() } else { 'N/A' }
@@ -566,6 +628,7 @@ function Get-RDPForensics {
                         SourceIP    = 'N/A'
                         SessionID   = $null
                         LogonID     = $logonID
+                        ActivityID  = $activityID
                         Details     = "LogonType: $logonType"
                     }
                 }
@@ -573,6 +636,14 @@ function Get-RDPForensics {
         
             if ($systemEvents) {
                 foreach ($event in $systemEvents) {
+                    # Extract ActivityID from XML
+                    [xml]$eventXml = $event.ToXml()
+                    $activityID = if ($eventXml.Event.System.Correlation.ActivityID) { 
+                        $eventXml.Event.System.Correlation.ActivityID 
+                    } else { 
+                        $null 
+                    }
+                
                     $results += [PSCustomObject]@{
                         TimeCreated = $event.TimeCreated
                         EventID     = $event.Id
@@ -582,6 +653,7 @@ function Get-RDPForensics {
                         SourceIP    = 'N/A'
                         SessionID   = $null
                         LogonID     = $null
+                        ActivityID  = $activityID
                         Details     = "DWM exited (RDP session ended)"
                     }
                 }
@@ -681,11 +753,11 @@ function Get-RDPForensics {
     # Correlate events by LogonID and SessionID if GroupBySession is specified
     if ($GroupBySession) {
         Write-Host "`n" -NoNewline
-        Write-Host "$(Get-Emoji 'key') Correlating events by LogonID and SessionID..." -ForegroundColor Cyan
+        Write-Host "$(Get-Emoji 'key') Correlating events by ActivityID/LogonID/SessionID..." -ForegroundColor Cyan
         $sessions = Get-CorrelatedSessions -Events $allEvents
         Write-Host "  $(Get-Emoji 'check') Found " -ForegroundColor Green -NoNewline
         Write-Host "$($sessions.Count)" -ForegroundColor White -NoNewline
-        Write-Host " unique sessions" -ForegroundColor Green
+        Write-Host " unique sessions (using ActivityID-based correlation)" -ForegroundColor Green
     }
 
     # Display results
