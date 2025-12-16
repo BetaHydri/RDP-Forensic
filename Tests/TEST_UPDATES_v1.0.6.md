@@ -50,9 +50,9 @@ Comprehensive test coverage added for new features in v1.0.6:
 - ✅ Parameter validation includes new switch
 
 ### 2. Get-RDPForensics.Correlation.Tests.ps1
-**New Tests Added:**
-- ✅ ActivityID as Priority 1 correlation key
-- ✅ Time-based correlation logic for 4776
+**New Tests Added (Updated in v1.0.7):**
+- ✅ LogonID as Priority 1 correlation key
+- ✅ Time-based correlation logic for pre-auth events (4768-4772, 4776)
 - ✅ 10-second time window matching
 - ✅ Username matching for correlation
 - ✅ 4776 events added to matched sessions

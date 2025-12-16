@@ -144,10 +144,10 @@ Invoke-Pester -Path . -FullNameFilter "*Export*" -Output Detailed
 - Edge case scenarios
 - Graceful failure modes
 
-### 8. Session Correlation Tests (NEW v1.0.5+)
-- ActivityID-based correlation (Priority 1)
-- LogonID-based correlation (Priority 2)
-- SessionID-based correlation (Priority 3)
+### 8. Session Correlation Tests (v1.0.5+, enhanced v1.0.7)
+- LogonID-based correlation (Priority 1)
+- SessionID-based correlation (Priority 2)
+- Secondary correlation: SessionID → LogonID merge (Username + Time + RDP LogonType)
 - Lifecycle stage tracking (6 stages)
 - Session duration calculation
 - Completeness detection

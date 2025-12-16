@@ -165,11 +165,12 @@ function Get-RDPForensics {
         return $emojis[$Name]
     }
 
-    # Function to correlate events across log sources using ActivityID, LogonID, and SessionID
+    # Function to correlate events across log sources using LogonID and SessionID
     function Get-CorrelatedSessions {
         param([array]$Events)
 
-        # Group events by ActivityID (priority 1), LogonID (priority 2), or SessionID (priority 3)
+        # Group events by LogonID (priority 1) or SessionID (priority 2)
+        # Secondary correlation then merges SessionID sessions into LogonID sessions (same user + time proximity)
         $sessionMap = @{}
         
         foreach ($event in $Events) {
