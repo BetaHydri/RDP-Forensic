@@ -15,8 +15,8 @@
 # Ensure we're in the script directory
 Set-Location $PSScriptRoot
 
-Write-Host "`n=== RDP Forensics Toolkit - Usage Examples ===" -ForegroundColor Cyan
-Write-Host "Uncomment and run the scenarios that match your needs.`n" -ForegroundColor Yellow
+Write-Host "`n=== RDP Forensics Toolkit - Usage Examples ===" -ForegroundColor CyanWrite-Host "\n⚠️  IMPORTANT: Import the module first!" -ForegroundColor Yellow
+Write-Host "   Import-Module .\RDP-Forensic.psm1\n" -ForegroundColor WhiteWrite-Host "Uncomment and run the scenarios that match your needs.`n" -ForegroundColor Yellow
 
 # ============================================================================
 # SCENARIO 1: Daily Security Review
@@ -25,7 +25,7 @@ Write-Host "Uncomment and run the scenarios that match your needs.`n" -Foregroun
 Write-Host "SCENARIO 1: Daily Security Review" -ForegroundColor Green
 Write-Host "Get all RDP activity for today and display summary"
 
-.\Get-RDPForensics.ps1
+Get-RDPForensics
 #>
 
 # ============================================================================
@@ -38,7 +38,7 @@ Write-Host "Export last 7 days of RDP activity to CSV for compliance review"
 $reportPath = "C:\RDP_Reports\Weekly"
 $startDate = (Get-Date).AddDays(-7)
 
-.\Get-RDPForensics.ps1 -StartDate $startDate -ExportPath $reportPath
+Get-RDPForensics -StartDate $startDate -ExportPath $reportPath
 
 Write-Host "`nReport generated in: $reportPath" -ForegroundColor Cyan
 #>
@@ -53,7 +53,7 @@ Write-Host "Track all RDP activity for a specific user"
 $targetUser = "admin"  # Change to target username
 $investigationPath = "C:\Investigations\$targetUser"
 
-.\Get-RDPForensics.ps1 -Username $targetUser -StartDate (Get-Date).AddMonths(-1) -ExportPath $investigationPath
+Get-RDPForensics -Username $targetUser -StartDate (Get-Date).AddMonths(-1) -ExportPath $investigationPath
 
 Write-Host "`nInvestigation results saved to: $investigationPath" -ForegroundColor Cyan
 #>
@@ -65,7 +65,7 @@ Write-Host "`nInvestigation results saved to: $investigationPath" -ForegroundCol
 Write-Host "SCENARIO 4: Brute Force Attack Detection" -ForegroundColor Green
 Write-Host "Identify IPs with multiple failed logon attempts"
 
-$events = .\Get-RDPForensics.ps1 -StartDate (Get-Date).AddDays(-1)
+$events = Get-RDPForensics -StartDate (Get-Date).AddDays(-1)
 
 # Find IPs with more than 5 failed attempts
 $bruteForceAttempts = $events | 
@@ -98,7 +98,7 @@ if ($bruteForceAttempts) {
 Write-Host "SCENARIO 5: After-Hours Access Monitoring" -ForegroundColor Green
 Write-Host "Detect RDP logons outside business hours (6 PM - 6 AM)"
 
-$events = .\Get-RDPForensics.ps1 -StartDate (Get-Date).AddDays(-7)
+$events = Get-RDPForensics -StartDate (Get-Date).AddDays(-7)
 
 $afterHoursLogons = $events | Where-Object {
     $_.EventID -eq 4624 -and
@@ -131,7 +131,7 @@ $authorizedRanges = @(
     '^172\.(1[6-9]|2[0-9]|3[01])\.'  # Private network
 )
 
-$events = .\Get-RDPForensics.ps1 -StartDate (Get-Date).AddDays(-30)
+$events = Get-RDPForensics -StartDate (Get-Date).AddDays(-30)
 
 $unauthorizedIPs = $events | Where-Object {
     $_.EventID -eq 4624 -and
@@ -158,7 +158,7 @@ if ($unauthorizedIPs) {
 Write-Host "SCENARIO 7: Session Duration Analysis" -ForegroundColor Green
 Write-Host "Calculate session durations and identify long-running sessions"
 
-$events = .\Get-RDPForensics.ps1 -StartDate (Get-Date).AddDays(-7)
+$events = Get-RDPForensics -StartDate (Get-Date).AddDays(-7)
 
 # Group logon and logoff events by user and LogonID
 $logons = $events | Where-Object { $_.EventID -eq 4624 }
@@ -211,7 +211,7 @@ if ($sessionDurations) {
 Write-Host "SCENARIO 8: Monitor Current Active Sessions" -ForegroundColor Green
 Write-Host "Display currently active RDP sessions with process information"
 
-.\Get-CurrentRDPSessions.ps1 -ShowProcesses
+Get-CurrentRDPSessions -ShowProcesses
 #>
 
 # ============================================================================
@@ -228,7 +228,7 @@ $reportPath = "C:\Reports\RDP\Monthly\$($reportMonth.ToString('yyyy-MM'))"
 
 Write-Host "Generating report for: $($reportMonth.ToString('MMMM yyyy'))" -ForegroundColor Cyan
 
-$events = .\Get-RDPForensics.ps1 -StartDate $startDate -EndDate $endDate -ExportPath $reportPath
+$events = Get-RDPForensics -StartDate $startDate -EndDate $endDate -ExportPath $reportPath
 
 # Generate statistics
 $stats = @{
@@ -260,22 +260,22 @@ Write-Host "Press Ctrl+C to exit monitoring mode" -ForegroundColor Yellow
 Write-Host ""
 
 # Option 1: Basic real-time monitoring with 5-second refresh (default)
-.\Get-CurrentRDPSessions.ps1 -Watch
+Get-CurrentRDPSessions -Watch
 
 # Option 2: Fast monitoring during incident response (3-second refresh)
-# .\Get-CurrentRDPSessions.ps1 -Watch -RefreshInterval 3
+# Get-CurrentRDPSessions -Watch -RefreshInterval 3
 
 # Option 3: Detailed monitoring with processes shown (10-second refresh)
-# .\Get-CurrentRDPSessions.ps1 -Watch -ShowProcesses -RefreshInterval 10
+# Get-CurrentRDPSessions -Watch -ShowProcesses -RefreshInterval 10
 
 # Option 4: Slower monitoring for long-term observation (30-second refresh)
-# .\Get-CurrentRDPSessions.ps1 -Watch -RefreshInterval 30
+# Get-CurrentRDPSessions -Watch -RefreshInterval 30
 
 # Option 5: Monitor with change logging for forensic analysis
-# .\Get-CurrentRDPSessions.ps1 -Watch -LogPath "C:\Logs\RDP_Monitor"
+# Get-CurrentRDPSessions -Watch -LogPath "C:\Logs\RDP_Monitor"
 
 # Option 6: Full monitoring - Watch, logging, and process tracking
-# .\Get-CurrentRDPSessions.ps1 -Watch -RefreshInterval 5 -LogPath "C:\SecurityLogs\RDP" -ShowProcesses
+# Get-CurrentRDPSessions -Watch -RefreshInterval 5 -LogPath "C:\SecurityLogs\RDP" -ShowProcesses
 
 Write-Host "`nReal-time monitoring provides:" -ForegroundColor Yellow
 Write-Host "  - Automatic screen refresh at configured intervals" -ForegroundColor Gray
@@ -306,7 +306,7 @@ $startDate = $incidentDate.AddDays(-7)
 $endDate = $incidentDate.AddDays(7)
 
 # Full collection including outbound connections
-$events = .\Get-RDPForensics.ps1 -StartDate $startDate -EndDate $endDate -ExportPath $investigationPath -IncludeOutbound
+$events = Get-RDPForensics -StartDate $startDate -EndDate $endDate -ExportPath $investigationPath -IncludeOutbound
 
 Write-Host "`n=== Investigation Summary ===" -ForegroundColor Yellow
 
@@ -325,7 +325,7 @@ if ($suspiciousIPs) {
 
 # Get current sessions at time of investigation
 Write-Host "`n=== Current RDP Sessions ===" -ForegroundColor Yellow
-.\Get-CurrentRDPSessions.ps1 -ShowProcesses
+Get-CurrentRDPSessions -ShowProcesses
 
 Write-Host "`nInvestigation complete. Results saved to: $investigationPath" -ForegroundColor Green
 #>
@@ -341,7 +341,7 @@ $reportPath = "C:\RDP_Reports\Sessions"
 
 # Analyze last 7 days with session grouping
 Write-Host "`nAnalyzing sessions from last 7 days..." -ForegroundColor Cyan
-$sessions = .\Get-RDPForensics.ps1 -StartDate (Get-Date).AddDays(-7) -GroupBySession -ExportPath $reportPath
+$sessions = Get-RDPForensics -StartDate (Get-Date).AddDays(-7) -GroupBySession -ExportPath $reportPath
 
 # Find incomplete sessions (missing logoff, etc.)
 $incompleteSessions = $sessions | Where-Object { -not $_.LifecycleComplete }
@@ -385,7 +385,7 @@ Write-Host "Test 1: Session Correlation with LogonID-first + SessionID Merge" -F
 Write-Host "Should show fewer fragmented sessions, higher event counts per session" -ForegroundColor Yellow
 Write-Host ""
 
-$sessions = .\Get-RDPForensics.ps1 -StartDate (Get-Date).AddHours(-2) -GroupBySession
+$sessions = Get-RDPForensics -StartDate (Get-Date).AddHours(-2) -GroupBySession
 
 # Display first 3 sessions with detailed info
 $sessions | Select-Object -First 3 | Format-List `
@@ -460,7 +460,7 @@ Write-Host ""
 
 # First, get all sessions to find LogonIDs
 Write-Host "Step 1: Get all sessions and list LogonIDs" -ForegroundColor Cyan
-$sessions = .\Get-RDPForensics.ps1 -StartDate (Get-Date).AddHours(-4) -GroupBySession
+$sessions = Get-RDPForensics -StartDate (Get-Date).AddHours(-4) -GroupBySession
 $sessions | Select-Object CorrelationKey, User, @{N='Events';E={$_.Events.Count}}, Duration | 
     Format-Table -AutoSize
 
@@ -471,7 +471,7 @@ Write-Host "Filtering for LogonID: $targetLogonID" -ForegroundColor Yellow
 Write-Host ""
 
 # Get detailed view of this specific session
-.\Get-RDPForensics.ps1 -StartDate (Get-Date).AddHours(-4) -GroupBySession -LogonID $targetLogonID
+Get-RDPForensics -StartDate (Get-Date).AddHours(-4) -GroupBySession -LogonID $targetLogonID
 
 Write-Host "`nUse Case: Forensic analysis of specific authentication event" -ForegroundColor Green
 Write-Host "  ✓ Direct access to session by Security log identifier" -ForegroundColor Gray
@@ -489,7 +489,7 @@ Write-Host ""
 
 # First, get all sessions to find SessionIDs
 Write-Host "Step 1: Get all sessions and list SessionIDs" -ForegroundColor Cyan
-$sessions = .\Get-RDPForensics.ps1 -StartDate (Get-Date).AddHours(-4) -GroupBySession
+$sessions = Get-RDPForensics -StartDate (Get-Date).AddHours(-4) -GroupBySession
 $sessions | Select-Object CorrelationKey, User, SessionID, @{N='Events';E={$_.Events.Count}}, Duration | 
     Format-Table -AutoSize
 
@@ -500,7 +500,7 @@ Write-Host "Filtering for SessionID: $targetSessionID" -ForegroundColor Yellow
 Write-Host ""
 
 # Get detailed view of this specific session
-.\Get-RDPForensics.ps1 -StartDate (Get-Date).AddHours(-4) -GroupBySession -SessionID $targetSessionID
+Get-RDPForensics -StartDate (Get-Date).AddHours(-4) -GroupBySession -SessionID $targetSessionID
 
 Write-Host "`nUse Case: Troubleshoot specific RDP session number" -ForegroundColor Green
 Write-Host "  ✓ Match terminal session ID from user complaints" -ForegroundColor Gray
@@ -523,7 +523,7 @@ Write-Host "  • LogonID extracted correctly (not '0x0' SYSTEM account)" -Foreg
 Write-Host ""
 
 # Run on Domain Controller
-$sessions = .\Get-RDPForensics.ps1 -StartDate (Get-Date).AddHours(-5) `
+$sessions = Get-RDPForensics -StartDate (Get-Date).AddHours(-5) `
     -Username "contoso\administrator" `
     -GroupBySession
 
@@ -562,13 +562,13 @@ Write-Host "  • SessionID + LogonID session merging" -ForegroundColor Yellow
 Write-Host ""
 
 # Run on Workgroup Server
-$beforeCount = (.\Get-RDPForensics.ps1 -StartDate (Get-Date).AddHours(-5) -GroupBySession | 
+$beforeCount = (Get-RDPForensics -StartDate (Get-Date).AddHours(-5) -GroupBySession | 
     Measure-Object).Count
 
 Write-Host "Session count: $beforeCount" -ForegroundColor White
 
 # Filter for administrator
-$sessions = .\Get-RDPForensics.ps1 -StartDate (Get-Date).AddHours(-5) `
+$sessions = Get-RDPForensics -StartDate (Get-Date).AddHours(-5) `
     -Username "administrator" `
     -GroupBySession
 
@@ -616,14 +616,14 @@ Write-Host ""
 
 # Example 1: Username + LogonID
 Write-Host "Example 1: Filter by Username AND LogonID" -ForegroundColor Cyan
-.\Get-RDPForensics.ps1 -StartDate (Get-Date).AddHours(-4) `
+Get-RDPForensics -StartDate (Get-Date).AddHours(-4) `
     -Username "administrator" `
     -LogonID "0x6950A4" `
     -GroupBySession
 
 # Example 2: Source IP + SessionID
 Write-Host "`nExample 2: Filter by Source IP AND SessionID" -ForegroundColor Cyan
-.\Get-RDPForensics.ps1 -StartDate (Get-Date).AddHours(-4) `
+Get-RDPForensics -StartDate (Get-Date).AddHours(-4) `
     -SourceIP "172.16.0.2" `
     -SessionID "5" `
     -GroupBySession
@@ -631,7 +631,7 @@ Write-Host "`nExample 2: Filter by Source IP AND SessionID" -ForegroundColor Cya
 # Example 3: Export specific session
 Write-Host "`nExample 3: Export Specific Session by LogonID" -ForegroundColor Cyan
 $reportPath = "C:\RDP_Reports\SpecificSession"
-.\Get-RDPForensics.ps1 -StartDate (Get-Date).AddDays(-1) `
+Get-RDPForensics -StartDate (Get-Date).AddDays(-1) `
     -LogonID "0x6950A4" `
     -GroupBySession `
     -ExportPath $reportPath
@@ -663,3 +663,4 @@ Write-Host " 16. Domain Controller Correlation Testing (NEW in v1.0.7)" -Foregro
 Write-Host " 17. Workgroup Server Correlation Testing (NEW in v1.0.7)" -ForegroundColor Green
 Write-Host " 18. Combine New Filters (NEW in v1.0.7)" -ForegroundColor Green
 Write-Host ""
+

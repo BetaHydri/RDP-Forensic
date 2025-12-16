@@ -34,55 +34,63 @@ A complete PowerShell-based RDP forensics toolkit with 5 files:
 
 ## Quick Start (3 Steps)
 
+### Step 0: Import the Module (REQUIRED)
+```powershell
+# Navigate to the toolkit directory and import the module
+cd "c:\Users\jantiede\OneDrive\Develop\PowerShell\Security\RDP-Forensic"
+Import-Module .\RDP-Forensic.psm1
+```
+
+> **⚠️ IMPORTANT:** You must import the module before using any cmdlets. All examples below assume this step is completed.
+
 ### Step 1: Test Basic Functionality
 ```powershell
 # Run this to see today's RDP activity
-cd "c:\Users\jantiede\OneDrive\Develop\PowerShell\Security\RDP-Forensic"
-.\Get-RDPForensics.ps1
+Get-RDPForensics
 ```
 
 ### Step 2: Check Current Sessions
 ```powershell
 # See who's currently connected
-.\Get-CurrentRDPSessions.ps1 -ShowProcesses
+Get-CurrentRDPSessions -ShowProcesses
 ```
 
 ### Step 3: Generate a Report
 ```powershell
 # Export last 7 days to CSV
-.\Get-RDPForensics.ps1 -StartDate (Get-Date).AddDays(-7) -ExportPath "C:\RDP_Reports"
+Get-RDPForensics -StartDate (Get-Date).AddDays(-7) -ExportPath "C:\RDP_Reports"
 ```
 
 ## Common Use Cases
 
 ### Daily Security Check
 ```powershell
-.\Get-RDPForensics.ps1
+Get-RDPForensics
 ```
 
 ### Investigate Suspicious Activity
 ```powershell
-.\Get-RDPForensics.ps1 -SourceIP "203.0.113.50" -StartDate (Get-Date).AddDays(-7)
+Get-RDPForensics -SourceIP "203.0.113.50" -StartDate (Get-Date).AddDays(-7)
 ```
 
 ### Track Specific User
 ```powershell
-.\Get-RDPForensics.ps1 -Username "admin" -StartDate (Get-Date).AddMonths(-1) -ExportPath "C:\Investigation"
+Get-RDPForensics -Username "admin" -StartDate (Get-Date).AddMonths(-1) -ExportPath "C:\Investigation"
 ```
 
 ### Find Brute Force Attacks
 ```powershell
-$events = .\Get-RDPForensics.ps1 -StartDate (Get-Date).AddDays(-1)
+$events = Get-RDPForensics -StartDate (Get-Date).AddDays(-1)
 $events | Where-Object {$_.EventID -eq 4625} | Group-Object SourceIP | Sort-Object Count -Descending
 ```
 
 ### Include Credential Validation Events (NEW v1.0.6)
 ```powershell
 # Track NTLM authentication attempts with time-based correlation
-.\Get-RDPForensics.ps1 -IncludeCredentialValidation -GroupBySession
+Get-RDPForensics -IncludeCredentialValidation -GroupBySession
 
 # Find failed credential validations (potential brute force)
-$events = .\Get-RDPForensics.ps1 -IncludeCredentialValidation -StartDate (Get-Date).AddDays(-1)
+$events = Get-RDPForensics -IncludeCredentialValidation -StartDate (Get-Date).AddDays(-1)
 $events | Where-Object {$_.EventType -match 'Credential Validation Failed'} | Group-Object User, SourceIP
 ```
 
@@ -296,7 +304,7 @@ Register-ScheduledTask -TaskName "Daily RDP Report" -Action $action -Trigger $tr
 
 ```powershell
 cd "c:\Users\jantiede\OneDrive\Develop\PowerShell\Security\RDP-Forensic"
-.\Get-RDPForensics.ps1
+Get-RDPForensics
 ```
 
 This will show you today's RDP activity and demonstrate the toolkit in action!

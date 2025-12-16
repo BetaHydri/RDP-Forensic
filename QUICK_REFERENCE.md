@@ -1,5 +1,10 @@
 # RDP Forensics Quick Reference
 
+> **⚠️ PREREQUISITE:** Import the module before using any cmdlets:
+> ```powershell
+> Import-Module .\RDP-Forensic.psm1
+> ```
+
 ## Event ID Quick Lookup
 
 ### Critical RDP Event IDs
@@ -80,7 +85,7 @@ Get-EventLog security -after (Get-date).AddHours(-24) | Where-Object {$_.eventid
 ### Get Pre-Authentication Events (Kerberos & NTLM) - NEW v1.0.6
 ```powershell
 # Using toolkit with time-based correlation (RECOMMENDED)
-.\Get-RDPForensics.ps1 -IncludeCredentialValidation -GroupBySession
+Get-RDPForensics -IncludeCredentialValidation -GroupBySession
 
 # Direct Kerberos event query
 Get-WinEvent -LogName Security -FilterXPath '*[System[(EventID=4768 or EventID=4771)]]' -MaxEvents 20
@@ -250,7 +255,7 @@ Invoke-Command -ComputerName $computers -ScriptBlock {
 
 2. **Collect Initial Data**
    ```powershell
-   .\Get-RDPForensics.ps1 -StartDate $incidentDate -ExportPath C:\Investigation
+   Get-RDPForensics -StartDate $incidentDate -ExportPath C:\Investigation
    ```
 
 3. **Analyze Connection Attempts**
@@ -284,20 +289,20 @@ Invoke-Command -ComputerName $computers -ScriptBlock {
 ### Scenario 1: Brute Force Attack
 ```powershell
 # Get failed attempts grouped by IP
-$events = .\Get-RDPForensics.ps1 -StartDate (Get-Date).AddHours(-24)
+$events = Get-RDPForensics -StartDate (Get-Date).AddHours(-24)
 $events | Where-Object {$_.EventID -eq 4625} | Group-Object SourceIP | Where-Object {$_.Count -gt 5} | Sort-Object Count -Descending
 ```
 
 ### Scenario 2: Compromised Account
 ```powershell
 # Track all activity for specific user
-.\Get-RDPForensics.ps1 -Username "admin" -StartDate (Get-Date).AddDays(-7) -ExportPath C:\Investigation
+Get-RDPForensics -Username "admin" -StartDate (Get-Date).AddDays(-7) -ExportPath C:\Investigation
 ```
 
 ### Scenario 3: Unauthorized Access
 ```powershell
 # Find logons from unusual IPs
-$events = .\Get-RDPForensics.ps1 -StartDate (Get-Date).AddDays(-30)
+$events = Get-RDPForensics -StartDate (Get-Date).AddDays(-30)
 $events | Where-Object {$_.EventID -eq 4624 -and $_.SourceIP -notmatch '^(10\.|192\.168\.|172\.(1[6-9]|2[0-9]|3[01]))'}
 ```
 

@@ -164,24 +164,31 @@ The tool automatically detects your PowerShell version and adapts the output acc
 
 **Installation:**
 
-You can run the scripts directly or import the module for easier access:
+**You must import the module before using the cmdlets:**
 
 ```powershell
+# Navigate to the toolkit directory
+cd "C:\Path\To\RDP-Forensic"
 
-# Option 1: Import as module (recommended)
+# Import the module (required)
 Import-Module .\RDP-Forensic.psm1
 
-# Now you can call functions directly
+# Now you can call the cmdlets
 Get-RDPForensics
 Get-CurrentRDPSessions
 ```
 
+> **Note:** All examples in this documentation assume the module has been imported.
+
 **Usage Examples:**
+
+> **⚠️ IMPORTANT:** Import the module first before running any commands:
+> ```powershell
+> Import-Module .\RDP-Forensic.psm1
+> ```
 
 ```powershell
 # Get all RDP events for today
-.\Get-RDPForensics.ps1
-# OR if module imported:
 Get-RDPForensics
 
 # Get last 7 days of RDP events
@@ -541,31 +548,31 @@ When using the `-ExportPath` parameter, two files are generated:
 ### Incident Response
 ```powershell
 # Investigate suspicious activity from specific IP
-.\Get-RDPForensics.ps1 -SourceIP "203.0.113.50" -StartDate (Get-Date).AddDays(-7) -ExportPath "C:\IR\RDP"
+Get-RDPForensics -SourceIP "203.0.113.50" -StartDate (Get-Date).AddDays(-7) -ExportPath "C:\IR\RDP"
 ```
 
 ### Compliance Auditing
 ```powershell
 # Monthly RDP access audit
-.\Get-RDPForensics.ps1 -StartDate (Get-Date).AddMonths(-1) -ExportPath "C:\Compliance\RDP_$(Get-Date -Format 'yyyy-MM')"
+Get-RDPForensics -StartDate (Get-Date).AddMonths(-1) -ExportPath "C:\Compliance\RDP_$(Get-Date -Format 'yyyy-MM')"
 ```
 
 ### User Activity Tracking
 ```powershell
 # Track specific user's RDP sessions
-.\Get-RDPForensics.ps1 -Username "admin" -StartDate (Get-Date).AddDays(-30) -ExportPath "C:\UserActivity"
+Get-RDPForensics -Username "admin" -StartDate (Get-Date).AddDays(-30) -ExportPath "C:\UserActivity"
 ```
 
 ### Real-time Monitoring
 ```powershell
 # Check current sessions
-.\Get-CurrentRDPSessions.ps1 -ShowProcesses
+Get-CurrentRDPSessions -ShowProcesses
 ```
 
 ### Failed Logon Analysis (Brute Force Detection)
 ```powershell
 # Export events and filter for failed attempts
-$events = .\Get-RDPForensics.ps1 -StartDate (Get-Date).AddDays(-1)
+$events = Get-RDPForensics -StartDate (Get-Date).AddDays(-1)
 $events | Where-Object { $_.EventID -eq 4625 } | Group-Object SourceIP | Sort-Object Count -Descending
 ```
 
