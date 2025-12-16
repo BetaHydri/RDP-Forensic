@@ -738,15 +738,23 @@ function Get-RDPForensics {
                         default {
                             # Logon/Failed Logon (4624/4625)
                             # Match fields from "New Logon" section (not "Subject" section)
-                            $userName = if ($message -match 'New Logon:[\s\S]*?Account Name:\s+([^\r\n]+)') { $matches[1].Trim() } else { 'N/A' }
+                            $accountName = if ($message -match 'New Logon:[\s\S]*?Account Name:\s+([^\r\n]+)') { $matches[1].Trim() } else { 'N/A' }
                             $userDomain = if ($message -match 'New Logon:[\s\S]*?Account Domain:\s+([^\r\n]+)') { $matches[1].Trim() } else { 'N/A' }
+                            
+                            # Construct full username as DOMAIN\User to match TerminalServices event format
+                            if ($userDomain -ne 'N/A' -and $userDomain -ne '-' -and $accountName -ne 'N/A') {
+                                $userName = "$userDomain\$accountName"
+                            } else {
+                                $userName = $accountName
+                            }
+                            
                             $sourceIP = if ($message -match 'Source Network Address:\s+([^\r\n]+)') { $matches[1].Trim() } else { 'N/A' }
                             $logonType = if ($message -match 'Logon Type:\s+([^\r\n]+)') { $matches[1].Trim() } else { 'N/A' }
                             $logonID = if ($message -match 'New Logon:[\s\S]*?Logon ID:\s+([^\r\n]+)') { $matches[1].Trim() } else { 'N/A' }
                             
                             # DEBUG: Show extracted values for first few events
-                            if ($script:debugLogonIDCount -lt 3) {
-                                Write-Host "    DEBUG 4624: LogonID='$logonID' User='$userName' Domain='$userDomain' LogonType='$logonType'" -ForegroundColor DarkYellow
+                            if ($script:debugLogonIDCount -lt 5) {
+                                Write-Host "    DEBUG 4624: LogonID='$logonID' User='$userName' LogonType='$logonType'" -ForegroundColor DarkYellow
                                 $script:debugLogonIDCount++
                             }
                             
