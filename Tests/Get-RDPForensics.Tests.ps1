@@ -29,14 +29,14 @@ BeforeAll {
     # Mock data for testing
     $script:MockEventData = @{
         TimeCreated = Get-Date
-        EventID = 4624
-        EventType = 'Successful Logon'
-        User = 'TestUser'
-        Domain = 'TestDomain'
-        SourceIP = '192.168.1.100'
-        SessionID = '1'
-        LogonID = '0x12345'
-        Details = 'RemoteInteractive (RDP)'
+        EventID     = 4624
+        EventType   = 'Successful Logon'
+        User        = 'TestUser'
+        Domain      = 'TestDomain'
+        SourceIP    = '192.168.1.100'
+        SessionID   = '1'
+        LogonID     = '0x12345'
+        Details     = 'RemoteInteractive (RDP)'
     }
 }
 
@@ -123,37 +123,37 @@ Describe "Get-RDPForensics.ps1 - Script Validation" {
     Context "Parameter Validation" {
         It "Should accept StartDate parameter" {
             { & $script:ScriptPath -StartDate (Get-Date).AddDays(-1) -ErrorAction Stop } | 
-                Should -Not -Throw
+            Should -Not -Throw
         }
         
         It "Should accept EndDate parameter" {
             { & $script:ScriptPath -EndDate (Get-Date) -ErrorAction Stop } | 
-                Should -Not -Throw
+            Should -Not -Throw
         }
         
         It "Should accept Username parameter" {
             { & $script:ScriptPath -Username "testuser" -StartDate (Get-Date) -ErrorAction Stop } | 
-                Should -Not -Throw
+            Should -Not -Throw
         }
         
         It "Should accept SourceIP parameter" {
             { & $script:ScriptPath -SourceIP "192.168.1.1" -StartDate (Get-Date) -ErrorAction Stop } | 
-                Should -Not -Throw
+            Should -Not -Throw
         }
         
         It "Should accept IncludeOutbound switch" {
             { & $script:ScriptPath -IncludeOutbound -StartDate (Get-Date) -ErrorAction Stop } | 
-                Should -Not -Throw
+            Should -Not -Throw
         }
         
         It "Should accept GroupBySession switch" {
             { & $script:ScriptPath -GroupBySession -StartDate (Get-Date) -ErrorAction Stop } | 
-                Should -Not -Throw
+            Should -Not -Throw
         }
         
         It "Should accept IncludeCredentialValidation switch" {
             { & $script:ScriptPath -IncludeCredentialValidation -StartDate (Get-Date) -ErrorAction Stop } | 
-                Should -Not -Throw
+            Should -Not -Throw
         }
     }
 }
@@ -163,7 +163,7 @@ Describe "Get-RDPForensics.ps1 - Event Collection" {
     Context "Event Log Access" {
         It "Should access Security event log" {
             { Get-WinEvent -LogName 'Security' -MaxEvents 1 -ErrorAction Stop } | 
-                Should -Not -Throw
+            Should -Not -Throw
         }
         
         It "Should access TerminalServices-RemoteConnectionManager log" {
@@ -178,7 +178,7 @@ Describe "Get-RDPForensics.ps1 - Event Collection" {
         
         It "Should access System event log" {
             { Get-WinEvent -LogName 'System' -MaxEvents 1 -ErrorAction Stop } | 
-                Should -Not -Throw
+            Should -Not -Throw
         }
     }
     
@@ -227,7 +227,8 @@ Describe "Get-RDPForensics.ps1 - Filtering Functionality" {
                 $results | ForEach-Object {
                     $_.User | Should -Match "Administrator"
                 }
-            } else {
+            }
+            else {
                 Set-ItResult -Skipped -Because "No events found for Administrator"
             }
         }
@@ -244,10 +245,12 @@ Describe "Get-RDPForensics.ps1 - Filtering Functionality" {
                     $filtered | ForEach-Object {
                         $_.SourceIP | Should -Match $testIP
                     }
-                } else {
+                }
+                else {
                     Set-ItResult -Skipped -Because "No events with valid source IP found"
                 }
-            } else {
+            }
+            else {
                 Set-ItResult -Skipped -Because "No events found in last 7 days"
             }
         }
@@ -429,7 +432,8 @@ Describe "Get-RDPForensics.ps1 - Credential Validation (EventID 4776)" {
                 $cred4776.PSObject.Properties.Name | Should -Contain 'EventType'
                 $cred4776.PSObject.Properties.Name | Should -Contain 'Details'
                 $cred4776.EventType | Should -Match 'Credential Validation'
-            } else {
+            }
+            else {
                 Set-ItResult -Skipped -Because "No 4776 events found in time range"
             }
         }
@@ -439,7 +443,7 @@ Describe "Get-RDPForensics.ps1 - Credential Validation (EventID 4776)" {
         It "Should correlate 4776 with sessions when GroupBySession is used" {
             # Get results with both GroupBySession and IncludeCredentialValidation
             { & $script:ScriptPath -GroupBySession -IncludeCredentialValidation -StartDate (Get-Date).AddHours(-1) } | 
-                Should -Not -Throw
+            Should -Not -Throw
         }
     }
 }
