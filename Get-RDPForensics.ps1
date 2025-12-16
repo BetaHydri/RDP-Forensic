@@ -741,6 +741,13 @@ function Get-RDPForensics {
                             # Match Logon ID from "New Logon" section (not "Subject" section which is 0x0)
                             # Look for the pattern after "New Logon:" section by matching with context
                             $logonID = if ($message -match 'New Logon:[\s\S]*?Logon ID:\s+([^\r\n]+)') { $matches[1].Trim() } else { 'N/A' }
+                            
+                            # DEBUG: Show extracted LogonID for first few events
+                            if ($script:debugLogonIDCount -lt 3) {
+                                Write-Host "    DEBUG 4624: LogonID='$logonID' User='$userName' LogonType='$logonType'" -ForegroundColor DarkYellow
+                                $script:debugLogonIDCount++
+                            }
+                            
                             $workstation = if ($message -match 'Workstation Name:\s+([^\r\n]+)') { $matches[1].Trim() } else { 'N/A' }
                         
                             $logonTypeDesc = switch ($logonType) {
