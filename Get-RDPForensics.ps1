@@ -306,9 +306,13 @@ function Get-RDPForensics {
         $sessionIDSessions = @($sessionMap.Keys | Where-Object { $_ -like "SessionID:*" })
         $logonIDSessions = @($sessionMap.Keys | Where-Object { $_ -like "LogonID:*" })
         
+        Write-Host "$(Get-Emoji 'magnify') DEBUG: SessionID sessions: $($sessionIDSessions.Count), LogonID sessions: $($logonIDSessions.Count)" -ForegroundColor DarkYellow
+        
         foreach ($sessionIDKey in $sessionIDSessions) {
             $sessionIDSession = $sessionMap[$sessionIDKey]
             $sessionIDStart = ($sessionIDSession.Events | Sort-Object TimeCreated | Select-Object -First 1).TimeCreated
+            
+            Write-Host "  Trying to match $sessionIDKey (User: '$($sessionIDSession.User)')" -ForegroundColor DarkGray
             
             # Find matching LogonID session
             $matchedLogonIDKey = $null
@@ -317,18 +321,28 @@ function Get-RDPForensics {
             foreach ($logonIDKey in $logonIDSessions) {
                 $logonIDSession = $sessionMap[$logonIDKey]
                 
+                Write-Host "    Checking $logonIDKey (User: '$($logonIDSession.User)')" -ForegroundColor DarkGray
+                
                 # Match criteria: Same user + Time proximity (within ±10 seconds) + RDP LogonType
                 if ($logonIDSession.User -eq $sessionIDSession.User) {
                     $logonIDStart = ($logonIDSession.Events | Sort-Object TimeCreated | Select-Object -First 1).TimeCreated
                     $timeDiff = [Math]::Abs(($logonIDStart - $sessionIDStart).TotalSeconds)
                     
+                    Write-Host "      Users match! TimeDiff: $([Math]::Round($timeDiff, 2))s" -ForegroundColor DarkGray
+                    
                     # Check if this is an RDP session (LogonType 10, 7, or 3)
+                    $has4624 = @($logonIDSession.Events | Where-Object { $_.EventID -eq 4624 })
+                    Write-Host "      Has 4624 events: $($has4624.Count)" -ForegroundColor DarkGray
+                    
                     $hasRDPLogonType = $logonIDSession.Events | Where-Object { 
                         $_.EventID -eq 4624 -and 
                         $_.Details -match 'RemoteInteractive|Unlock/Reconnect|Network' 
                     }
                     
+                    Write-Host "      Has RDP LogonType: $($hasRDPLogonType.Count)" -ForegroundColor DarkGray
+                    
                     if ($timeDiff -le 10 -and $hasRDPLogonType) {
+                        Write-Host "      ✓ MATCH FOUND! (TimeDiff: $([Math]::Round($timeDiff, 2))s)" -ForegroundColor Green
                         if ($timeDiff -lt $closestTimeDiff) {
                             $closestTimeDiff = $timeDiff
                             $matchedLogonIDKey = $logonIDKey
