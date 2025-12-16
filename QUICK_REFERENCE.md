@@ -22,6 +22,10 @@ SESSION LIFECYCLE
 ├─ 39: Disconnected by another session (LocalSessionManager)
 ├─ 40: Disconnected with reason code (LocalSessionManager)
 
+LOCK/UNLOCK
+├─ 4800: Workstation locked (Security)
+├─ 4801: Workstation unlocked (Security)
+
 RECONNECT/DISCONNECT
 ├─ 4778: Session reconnected (Security)
 ├─ 4779: Session disconnected (Security)

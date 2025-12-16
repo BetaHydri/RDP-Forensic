@@ -12,8 +12,9 @@ function Get-RDPForensics {
     2. Credential Validation (EventID 4776)
     3. Authentication (EventID 4624, 4625)
     4. Logon (EventID 21, 22)
-    5. Session Disconnect/Reconnect (EventID 24, 25, 39, 40, 4778, 4779)
-    6. Logoff (EventID 23, 4634, 4647, 9009)
+    5. Lock/Unlock (EventID 4800, 4801)
+    6. Session Disconnect/Reconnect (EventID 24, 25, 39, 40, 4778, 4779)
+    7. Logoff (EventID 23, 4634, 4647, 9009)
 
 .PARAMETER StartDate
     The start date for log collection. Defaults to beginning of current day.
@@ -212,8 +213,8 @@ function Get-RDPForensics {
                     1149 { $sessionMap[$correlationKey].Lifecycle.ConnectionAttempt = $true }
                     { $_ -in 4624, 4776 } { $sessionMap[$correlationKey].Lifecycle.Authentication = $true }
                     { $_ -in 21, 22 } { $sessionMap[$correlationKey].Lifecycle.Logon = $true }
-                    { $_ -in 24, 25, 4778 } { $sessionMap[$correlationKey].Lifecycle.Active = $true }
-                    { $_ -in 39, 40, 4779 } { $sessionMap[$correlationKey].Lifecycle.Disconnect = $true }
+                    { $_ -in 24, 25, 4778, 4801 } { $sessionMap[$correlationKey].Lifecycle.Active = $true }
+                    { $_ -in 39, 40, 4779, 4800 } { $sessionMap[$correlationKey].Lifecycle.Disconnect = $true }
                     { $_ -in 23, 4634, 4647, 9009 } { $sessionMap[$correlationKey].Lifecycle.Logoff = $true }
                 }
                 
@@ -609,11 +610,75 @@ function Get-RDPForensics {
         }
     }
 
+    # Function to parse Session Lock/Unlock Events
+    function Get-RDPLockUnlockEvents {
+        param([DateTime]$Start, [DateTime]$End)
+    
+        Write-Host "$(Get-Emoji 'lock') [4/7] Collecting Session Lock/Unlock Events (EventID 4800, 4801)..." -ForegroundColor Yellow
+    
+        try {
+            $events = Get-WinEvent -FilterHashtable @{
+                LogName   = 'Security'
+                Id        = 4800, 4801
+                StartTime = $Start
+                EndTime   = $End
+            } -ErrorAction SilentlyContinue
+        
+            if ($events) {
+                $results = foreach ($event in $events) {
+                    $message = $event.Message
+                
+                    # Extract ActivityID from XML
+                    [xml]$eventXml = $event.ToXml()
+                    $activityID = if ($eventXml.Event.System.Correlation.ActivityID) { 
+                        $eventXml.Event.System.Correlation.ActivityID 
+                    }
+                    else { 
+                        $null 
+                    }
+                
+                    $userName = if ($message -match 'Subject:.*?Account Name:\s+([^\r\n]+)') { $matches[1].Trim() } else { 'N/A' }
+                    $userDomain = if ($message -match 'Subject:.*?Account Domain:\s+([^\r\n]+)') { $matches[1].Trim() } else { 'N/A' }
+                    $logonID = if ($message -match 'Subject:.*?Logon ID:\s+([^\r\n]+)') { $matches[1].Trim() } else { 'N/A' }
+                    $sessionID = if ($message -match 'Session ID:\s+([^\r\n]+)') { $matches[1].Trim() } else { 'N/A' }
+                
+                    $eventType = if ($event.Id -eq 4800) { 'Workstation Locked' } else { 'Workstation Unlocked' }
+                
+                    [PSCustomObject]@{
+                        TimeCreated = $event.TimeCreated
+                        EventID     = $event.Id
+                        EventType   = $eventType
+                        User        = $userName
+                        Domain      = $userDomain
+                        SourceIP    = 'Local Machine'
+                        SessionID   = $sessionID
+                        LogonID     = $logonID
+                        ActivityID  = $activityID
+                        Details     = "Session ID: $sessionID | LogonID: $logonID"
+                    }
+                }
+            
+                Write-Host "  $(Get-Emoji 'check') Found " -ForegroundColor Green -NoNewline
+                Write-Host "$($results.Count)" -ForegroundColor White -NoNewline
+                Write-Host " lock/unlock events" -ForegroundColor Green
+                return $results
+            }
+            else {
+                Write-Host "  $(Get-Emoji 'cross') No lock/unlock events found" -ForegroundColor DarkGray
+                return @()
+            }
+        }
+        catch {
+            Write-Warning "Error collecting lock/unlock events: $_"
+            return @()
+        }
+    }
+
     # Function to parse Session Reconnect/Disconnect from Security Log
     function Get-RDPSessionReconnectEvents {
         param([DateTime]$Start, [DateTime]$End)
     
-        Write-Host "$(Get-Emoji 'lock') [4/6] Collecting RDP Reconnect/Disconnect Events (EventID 4778, 4779)..." -ForegroundColor Yellow
+        Write-Host "$(Get-Emoji 'lock') [5/7] Collecting RDP Reconnect/Disconnect Events (EventID 4778, 4779)..." -ForegroundColor Yellow
     
         try {
             $events = Get-WinEvent -FilterHashtable @{
@@ -678,7 +743,7 @@ function Get-RDPForensics {
     function Get-RDPLogoffEvents {
         param([DateTime]$Start, [DateTime]$End)
     
-        Write-Host "$(Get-Emoji 'warning') [5/6] Collecting RDP Logoff Events (EventID 4634, 4647, 9009)..." -ForegroundColor Yellow
+        Write-Host "$(Get-Emoji 'warning') [6/7] Collecting RDP Logoff Events (EventID 4634, 4647, 9009)..." -ForegroundColor Yellow
     
         try {
             # Security log logoff events
@@ -777,7 +842,7 @@ function Get-RDPForensics {
     function Get-OutboundRDPConnections {
         param([DateTime]$Start, [DateTime]$End)
     
-        Write-Host "$(Get-Emoji 'magnify') [6/6] Collecting Outbound RDP Connections (EventID 1102)..." -ForegroundColor Yellow
+        Write-Host "$(Get-Emoji 'magnify') [7/7] Collecting Outbound RDP Connections (EventID 1102)..." -ForegroundColor Yellow
     
         try {
             $events = Get-WinEvent -FilterHashtable @{
@@ -832,6 +897,7 @@ function Get-RDPForensics {
     $allEvents += Get-RDPConnectionAttempts -Start $StartDate -End $EndDate
     $allEvents += Get-RDPAuthenticationEvents -Start $StartDate -End $EndDate -Include4776 $IncludeCredentialValidation.IsPresent
     $allEvents += Get-RDPSessionEvents -Start $StartDate -End $EndDate
+    $allEvents += Get-RDPLockUnlockEvents -Start $StartDate -End $EndDate
     $allEvents += Get-RDPSessionReconnectEvents -Start $StartDate -End $EndDate
     $allEvents += Get-RDPLogoffEvents -Start $StartDate -End $EndDate
 

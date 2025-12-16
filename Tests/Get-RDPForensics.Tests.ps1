@@ -202,7 +202,7 @@ Describe "Get-RDPForensics.ps1 - Event Collection" {
         }
         
         It "Should return events with valid EventIDs" {
-            $validEventIDs = @(1149, 4624, 4625, 4776, 21, 22, 23, 24, 25, 39, 40, 4778, 4779, 4634, 4647, 9009, 1102)
+            $validEventIDs = @(1149, 4624, 4625, 4776, 21, 22, 23, 24, 25, 39, 40, 4778, 4779, 4800, 4801, 4634, 4647, 9009, 1102)
             if ($script:TestResults.Count -gt 0) {
                 $script:TestResults | ForEach-Object {
                     $validEventIDs | Should -Contain $_.EventID

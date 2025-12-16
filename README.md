@@ -63,8 +63,9 @@ This toolkit provides detailed analysis of RDP connections across all connection
 1. **Network Connection** - Initial RDP connection attempts (EventID 1149)
 2. **Authentication** - Successful and failed authentication (EventID 4624, 4625)
 3. **Logon** - Session establishment (EventID 21, 22)
-4. **Disconnect/Reconnect** - Session state changes (EventID 24, 25, 39, 40, 4778, 4779)
-5. **Logoff** - Session termination (EventID 23, 4634, 4647, 9009)
+4. **Lock/Unlock** - Workstation lock state changes (EventID 4800, 4801)
+5. **Disconnect/Reconnect** - Session state changes (EventID 24, 25, 39, 40, 4778, 4779)
+6. **Logoff** - Session termination (EventID 23, 4634, 4647, 9009)
 
 ## Scripts
 
@@ -98,6 +99,7 @@ Most RDP events (1149, 21-25, 39, 40, 9009) are logged by default in Terminal Se
 - EventID 4624, 4625 (Logon/Failed Logon) - Requires "Audit Logon Events"
 - EventID 4634, 4647 (Logoff) - Requires "Audit Logon Events"
 - EventID 4778, 4779 (Session Reconnect/Disconnect) - Requires "Audit Other Logon/Logoff Events"
+- EventID 4800, 4801 (Workstation Lock/Unlock) - Requires "Audit Other Logon/Logoff Events"
 
 **Enable via PowerShell (recommended):**
 ```powershell

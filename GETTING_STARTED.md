@@ -100,6 +100,7 @@ The toolkit monitors the complete RDP connection lifecycle:
 
 **Session Stage:**
 - EventID 21: Session logon
+- EventID 4800/4801: Workstation lock/unlock
 - EventID 24/25: Disconnect/reconnect
 - EventID 4778/4779: Session state changes
 
