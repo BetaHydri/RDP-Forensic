@@ -43,6 +43,8 @@ This is the **only comprehensive, open-source PowerShell-native RDP forensics so
 - 📊 Generates summary statistics and reports
 - 🛡️ Built-in brute force attack detection
 - 📝 Comprehensive event parsing (no regex needed)
+- 📺 **Real-time session monitoring with auto-refresh**
+- 📝 **Automatic change logging for forensic analysis**
 
 **vs. Manual Event Viewer:**
 - ⚡ Automated collection across multiple logs
@@ -50,6 +52,8 @@ This is the **only comprehensive, open-source PowerShell-native RDP forensics so
 - 📈 Statistical analysis and trending
 - 💾 Export to formats suitable for analysis
 - ⏱️ Saves hours of manual investigation time
+- 🔴 **Live monitoring mode** - tracks sessions in real-time
+- 📋 **Change detection** - logs new/ended sessions and state changes
 
 ## Overview
 
