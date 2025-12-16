@@ -361,6 +361,22 @@ function Get-CurrentRDPSessions {
                             $idleTime = Get-WTSSessionInfo -SessionId $id -InfoClass ([WTS_INFO_CLASS]::WTSIdleTime)
                             $connectTime = Get-WTSSessionInfo -SessionId $id -InfoClass ([WTS_INFO_CLASS]::WTSLogonTime)
                             
+                            # Fallback to Event Log if WTS doesn't have logon time
+                            if (-not $connectTime -and $username -and $username -ne '') {
+                                $logonEvent = Get-WinEvent -FilterHashtable @{
+                                    LogName = 'Security'
+                                    Id = 4624
+                                } -MaxEvents 50 -ErrorAction SilentlyContinue | Where-Object {
+                                    $_.Message -match $username -and 
+                                    $_.Message -match 'Logon Type:\s+(10|7)\s' -and
+                                    $_.Message -match "Session ID:\s+$id\b"
+                                } | Select-Object -First 1
+                                
+                                if ($logonEvent) {
+                                    $connectTime = $logonEvent.TimeCreated
+                                }
+                            }
+                            
                             # Calculate idle time in readable format
                             $idleTimeDisplay = if ($idleTime -ne $null -and $idleTime -ge 0) {
                                 $idleMinutes = [Math]::Floor($idleTime / 60000)
