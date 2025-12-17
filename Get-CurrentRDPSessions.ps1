@@ -367,12 +367,12 @@ function Get-CurrentRDPSessions {
                             
                             if ($username -and $username -ne '') {
                                 # First check for recent reconnection (4778) - most recent activity
+                                # Note: Event 4778 has LogonID but not SessionID, so we match by username only
                                 $reconnectEvent = Get-WinEvent -FilterHashtable @{
                                     LogName = 'Security'
                                     Id      = 4778
                                 } -MaxEvents 50 -ErrorAction SilentlyContinue | Where-Object {
-                                    $_.Message -match [regex]::Escape($username) -and
-                                    $_.Properties[5].Value -eq $id  # Session ID property
+                                    $_.Message -match [regex]::Escape($username)
                                 } | Select-Object -First 1
                                 
                                 if ($reconnectEvent) {
