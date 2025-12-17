@@ -18,10 +18,12 @@ try {
     
     if ($logonIDSet -eq 'ByLogonID' -and $sessionIDSet -eq 'BySessionID') {
         Write-Host "  ✓ Parameter Sets defined correctly" -ForegroundColor Green
-    } else {
+    }
+    else {
         Write-Host "  ✗ Parameter Sets not defined correctly" -ForegroundColor Red
     }
-} catch {
+}
+catch {
     Write-Host "  ✗ Error: $_" -ForegroundColor Red
 }
 
@@ -60,7 +62,8 @@ try {
         $server = $matches[1].Trim()
         Write-Host "  ✓ Server parsing works: $server" -ForegroundColor Green
     }
-} catch {
+}
+catch {
     Write-Host "  ✗ Regex parsing error: $_" -ForegroundColor Red
 }
 
@@ -78,7 +81,8 @@ try {
     if ($diff.TotalSeconds -ge 0 -and $diff.TotalSeconds -le 10) {
         Write-Host "  ✓ Time window logic works (0-10 second window)" -ForegroundColor Green
     }
-} catch {
+}
+catch {
     Write-Host "  ✗ TimeSpan error: $_" -ForegroundColor Red
 }
 
@@ -87,15 +91,16 @@ Write-Host "`nTest 4: Hash Table Operations (Session Correlation)" -ForegroundCo
 try {
     $sessionMap = @{}
     $sessionMap['LogonID:0x12345'] = @{
-        Events = @()
-        User = 'testuser'
+        Events   = @()
+        User     = 'testuser'
         SourceIP = '192.168.1.1'
     }
     
     if ($sessionMap.ContainsKey('LogonID:0x12345')) {
         Write-Host "  ✓ Hash table operations work" -ForegroundColor Green
     }
-} catch {
+}
+catch {
     Write-Host "  ✗ Hash table error: $_" -ForegroundColor Red
 }
 
@@ -116,10 +121,12 @@ try {
     
     if ($filtered.Count -eq 3) {
         Write-Host "  ✓ Array filtering works correctly" -ForegroundColor Green
-    } else {
+    }
+    else {
         Write-Host "  ✗ Array filtering returned $($filtered.Count) events (expected 3)" -ForegroundColor Red
     }
-} catch {
+}
+catch {
     Write-Host "  ✗ Array filtering error: $_" -ForegroundColor Red
 }
 
@@ -129,10 +136,12 @@ try {
     # This should fail
     Get-RDPForensics -LogonID '0x12345' -SessionID '3' -StartDate (Get-Date) -ErrorAction Stop
     Write-Host "  ✗ Mutual exclusivity NOT working (should have thrown error)" -ForegroundColor Red
-} catch {
+}
+catch {
     if ($_.Exception.Message -match 'Parameter set') {
         Write-Host "  ✓ Mutual exclusivity works (correctly rejected both parameters)" -ForegroundColor Green
-    } else {
+    }
+    else {
         Write-Host "  ? Different error: $($_.Exception.Message)" -ForegroundColor Yellow
     }
 }
@@ -142,14 +151,16 @@ Write-Host "`nTest 7: Individual Parameter Usage" -ForegroundColor Green
 try {
     Get-RDPForensics -LogonID '0x12345' -StartDate (Get-Date).AddHours(-1) -ErrorAction Stop | Out-Null
     Write-Host "  ✓ LogonID parameter works" -ForegroundColor Green
-} catch {
+}
+catch {
     Write-Host "  ✗ LogonID parameter error: $_" -ForegroundColor Red
 }
 
 try {
     Get-RDPForensics -SessionID '3' -StartDate (Get-Date).AddHours(-1) -ErrorAction Stop | Out-Null
     Write-Host "  ✓ SessionID parameter works" -ForegroundColor Green
-} catch {
+}
+catch {
     Write-Host "  ✗ SessionID parameter error: $_" -ForegroundColor Red
 }
 
@@ -158,7 +169,8 @@ Write-Host "`nTest 8: Emoji Fallback" -ForegroundColor Green
 if ($PSVersionTable.PSVersion.Major -eq 5) {
     Write-Host "  ✓ PowerShell 5.1 detected - using fallback symbols" -ForegroundColor Green
     Write-Host "  Sample: $([char]0x25A3) $([char]0x25D4) $([char]0x263A)" -ForegroundColor Cyan
-} elseif ($PSVersionTable.PSVersion.Major -ge 6) {
+}
+elseif ($PSVersionTable.PSVersion.Major -ge 6) {
     Write-Host "  ✓ PowerShell 7.x detected - using full emoji" -ForegroundColor Green
     Write-Host "  Sample: $([char]::ConvertFromUtf32(0x1F4BB)) $([char]::ConvertFromUtf32(0x1F50D)) $([char]::ConvertFromUtf32(0x2705))" -ForegroundColor Cyan
 }
