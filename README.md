@@ -218,11 +218,32 @@ Get-RDPForensics -StartDate (Get-Date).AddDays(-7) -GroupBySession -ExportPath "
 # Only shows events when running tool on DC
 Get-RDPForensics -IncludeCredentialValidation -GroupBySession
 
+# **NEW v1.0.8** - Deep dive forensic analysis with credential validation and Event 4648
+# Filter by username, source IP, and specific LogonID for complete session correlation
+Get-RDPForensics -IncludeCredentialValidation -Username "AO-VPN\Administrator" -SourceIP "172.16.0.2" -LogonID 0x144533
+
 # Include outbound RDP connections
 Get-RDPForensics -IncludeOutbound
 
 # Get events for last month with export
 Get-RDPForensics -StartDate (Get-Date).AddMonths(-1) -ExportPath "C:\RDP_Analysis" -IncludeOutbound
+```
+
+**Example: Complete Forensic Investigation**
+
+The following example demonstrates comprehensive RDP forensic analysis with credential validation, showing Event 4648 (credential submission), Event 4624 (successful logon), and complete session correlation:
+
+```powershell
+Get-RDPForensics -IncludeCredentialValidation -Username "AO-VPN\Administrator" -SourceIP "172.16.0.2" -LogonID 0x144533
+```
+
+![RDP Forensics Complete Analysis Example](docs/rdpForensic-Sample1.png)
+
+This screenshot shows:
+- **Event 4648** - Credential submission with source IP and target user
+- **Event 4624** - Successful logon with Logon Type 10 (RemoteInteractive)
+- **Complete timeline** - Full authentication flow from credential entry to session establishment
+- **Correlation** - All events linked by LogonID for complete session picture
 ```
 
 **Parameters:**
