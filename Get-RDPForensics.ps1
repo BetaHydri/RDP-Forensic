@@ -10,7 +10,7 @@ function Get-RDPForensics {
     following forensic best practices. It tracks all stages of RDP connections:
     1. Network Connection (EventID 1149)
     2. Credential Validation (EventID 4776)
-    3. Authentication (EventID 4624, 4625)
+    3. Authentication (EventID 4624, 4625, 4648)
     4. Logon (EventID 21, 22)
     5. Lock/Unlock (EventID 4800, 4801)
     6. Session Disconnect/Reconnect (EventID 24, 25, 39, 40, 4778, 4779)
@@ -253,7 +253,7 @@ function Get-RDPForensics {
                 # Track lifecycle stages
                 switch ($event.EventID) {
                     1149 { $sessionMap[$correlationKey].Lifecycle.ConnectionAttempt = $true }
-                    { $_ -in 4624, 4776 } { $sessionMap[$correlationKey].Lifecycle.Authentication = $true }
+                    { $_ -in 4624, 4648, 4776 } { $sessionMap[$correlationKey].Lifecycle.Authentication = $true }
                     { $_ -in 21, 22 } { $sessionMap[$correlationKey].Lifecycle.Logon = $true }
                     { $_ -in 24, 25, 4778, 4801 } { $sessionMap[$correlationKey].Lifecycle.Active = $true }
                     { $_ -in 39, 40, 4779, 4800 } { $sessionMap[$correlationKey].Lifecycle.Disconnect = $true }
@@ -514,7 +514,7 @@ function Get-RDPForensics {
         }
     }
 
-    # Function to parse EventID 4624, 4625, 4776, 4768-4772 - Authentication Events
+    # Function to parse EventID 4624, 4625, 4648, 4776, 4768-4772 - Authentication Events
     function Get-RDPAuthenticationEvents {
         param(
             [DateTime]$Start, 
@@ -522,19 +522,20 @@ function Get-RDPForensics {
             [bool]$IncludeKerberosAndNTLM = $false
         )
     
-        $eventList = if ($IncludeKerberosAndNTLM) { "4624, 4625, 4768-4772, 4776" } else { "4624, 4625" }
+        $eventList = if ($IncludeKerberosAndNTLM) { "4624, 4625, 4648, 4768-4772, 4776" } else { "4624, 4625, 4648" }
         Write-Host "$(Get-Emoji 'key') [2/7] Collecting RDP Authentication Events (EventID $eventList)..." -ForegroundColor Yellow
     
         try {
-            # Collect logon events (4624/4625) and credential validation events (4776)
+            # Collect logon events (4624/4625) and explicit credential usage (4648)
             $logonEvents = Get-WinEvent -FilterHashtable @{
                 LogName   = 'Security'
-                Id        = 4624, 4625
+                Id        = 4624, 4625, 4648
                 StartTime = $Start
                 EndTime   = $End
             } -ErrorAction SilentlyContinue | Where-Object {
                 # Filter for RDP LogonTypes: 10 (RemoteInteractive), 7 (Unlock/Reconnect), 3 (Network-can be RDP), 5 (Service/Console)
-                $_.Message -match 'Logon Type:\s+(10|7|3|5)'
+                # For Event 4648, include all (no logon type)
+                $_.Id -eq 4648 -or $_.Message -match 'Logon Type:\s+(10|7|3|5)'
             }
             
             # Optionally collect Kerberos and NTLM pre-authentication events
@@ -747,6 +748,53 @@ function Get-RDPForensics {
                                 SourceIP    = 'N/A'
                                 SessionID   = $null
                                 LogonID     = $null
+                                ActivityID  = $activityID
+                                Details     = $details
+                            }
+                        }
+                        4648 {
+                            # Explicit Credential Usage (credential submission before logon)
+                            # Shows WHO submitted credentials, FOR WHICH account, FROM WHERE
+                            $subjectUserName = if ($message -match 'Subject:[\s\S]*?Account Name:\s+([^\r\n]+)') { $matches[1].Trim() } else { 'N/A' }
+                            $subjectDomain = if ($message -match 'Subject:[\s\S]*?Account Domain:\s+([^\r\n]+)') { $matches[1].Trim() } else { 'N/A' }
+                            $subjectLogonID = if ($message -match 'Subject:[\s\S]*?Logon ID:\s+([^\r\n]+)') { $matches[1].Trim() } else { 'N/A' }
+                            
+                            $targetUserName = if ($message -match 'Account Whose Credentials Were Used:[\s\S]*?Account Name:\s+([^\r\n]+)') { $matches[1].Trim() } else { 'N/A' }
+                            $targetDomain = if ($message -match 'Account Whose Credentials Were Used:[\s\S]*?Account Domain:\s+([^\r\n]+)') { $matches[1].Trim() } else { 'N/A' }
+                            
+                            $targetServerName = if ($message -match 'Target Server:[\s\S]*?Target Server Name:\s+([^\r\n]+)') { $matches[1].Trim() } else { 'N/A' }
+                            $sourceIP = if ($message -match 'Network Information:[\s\S]*?Network Address:\s+([^\r\n]+)') { $matches[1].Trim() } else { 'N/A' }
+                            $processName = if ($message -match 'Process Information:[\s\S]*?Process Name:\s+([^\r\n]+)') { $matches[1].Trim() } else { 'N/A' }
+                            
+                            # Construct usernames
+                            if ($subjectDomain -ne 'N/A' -and $subjectDomain -ne '-' -and $subjectUserName -ne 'N/A') {
+                                $subjectFullName = "$subjectDomain\$subjectUserName"
+                            } else {
+                                $subjectFullName = $subjectUserName
+                            }
+                            
+                            if ($targetDomain -ne 'N/A' -and $targetDomain -ne '-' -and $targetUserName -ne 'N/A') {
+                                $targetFullName = "$targetDomain\$targetUserName"
+                            } else {
+                                $targetFullName = $targetUserName
+                            }
+                            
+                            # Use target user as primary User field (the account being authenticated)
+                            $userName = $targetFullName
+                            $userDomain = $targetDomain
+                            
+                            $eventType = 'Credential Submission'
+                            $details = "Subject: $subjectFullName → Target: $targetFullName | Server: $targetServerName | Process: $(Split-Path $processName -Leaf)"
+                            
+                            [PSCustomObject]@{
+                                TimeCreated = $event.TimeCreated
+                                EventID     = $event.Id
+                                EventType   = $eventType
+                                User        = $userName
+                                Domain      = $userDomain
+                                SourceIP    = $sourceIP
+                                SessionID   = $null
+                                LogonID     = $subjectLogonID
                                 ActivityID  = $activityID
                                 Details     = $details
                             }

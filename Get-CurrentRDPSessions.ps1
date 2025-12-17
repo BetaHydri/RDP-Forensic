@@ -573,24 +573,65 @@ function Get-CurrentRDPSessions {
                 Write-Host "$(Get-Emoji 'chart') RECENT LOGON INFORMATION" -ForegroundColor Yellow
                 Write-Host ("-" * 80) -ForegroundColor DarkGreen
                 foreach ($session in $sessionObjects | Where-Object { $_.Username -ne 'N/A' }) {
-                    # Check for reconnection first (4778), then initial logon (4624)
-                    $recentActivity = Get-WinEvent -FilterHashtable @{
+                    # Collect all potential connection events and use the most recent one (same logic as ConnectTime)
+                    $candidateEvents = @()
+                    
+                    # Check Security Event 4778 (reconnection)
+                    $reconnectEvent = Get-WinEvent -FilterHashtable @{
                         LogName = 'Security'
                         Id      = 4778
                     } -MaxEvents 50 -ErrorAction SilentlyContinue | Where-Object {
                         $_.Message -match [regex]::Escape($session.Username)
                     } | Select-Object -First 1
                     
-                    if (-not $recentActivity) {
-                        $recentActivity = Get-WinEvent -FilterHashtable @{
-                            LogName = 'Security'
-                            Id      = 4624
-                        } -MaxEvents 100 -ErrorAction SilentlyContinue | Where-Object {
-                            $_.Message -match [regex]::Escape($session.Username) -and $_.Message -match 'Logon Type:\s+(10|7)\s'
-                        } | Select-Object -First 1
+                    if ($reconnectEvent) {
+                        $candidateEvents += $reconnectEvent
                     }
-                
-                    if ($recentActivity) {
+                    
+                    # Check Terminal Services Event 25 (reconnection)
+                    $tsReconnect = Get-WinEvent -FilterHashtable @{
+                        LogName = 'Microsoft-Windows-TerminalServices-LocalSessionManager/Operational'
+                        Id      = 25
+                    } -MaxEvents 50 -ErrorAction SilentlyContinue | Where-Object {
+                        $_.Message -match [regex]::Escape($session.Username) -and
+                        $_.Properties[0].Value -eq $session.ID  # Session ID
+                    } | Select-Object -First 1
+                    
+                    if ($tsReconnect) {
+                        $candidateEvents += $tsReconnect
+                    }
+                    
+                    # Check Security Event 4624 (initial logon)
+                    $logonEvent = Get-WinEvent -FilterHashtable @{
+                        LogName = 'Security'
+                        Id      = 4624
+                    } -MaxEvents 100 -ErrorAction SilentlyContinue | Where-Object {
+                        $_.Message -match [regex]::Escape($session.Username) -and 
+                        $_.Message -match 'Logon Type:\s+(10|7)\s' -and
+                        ($session.ClientIP -and $_.Message -match [regex]::Escape($session.ClientIP))
+                    } | Select-Object -First 1
+                    
+                    if ($logonEvent) {
+                        $candidateEvents += $logonEvent
+                    }
+                    
+                    # Check Terminal Services Event 21 (session logon) or 22 (shell start)
+                    $tsLogon = Get-WinEvent -FilterHashtable @{
+                        LogName = 'Microsoft-Windows-TerminalServices-LocalSessionManager/Operational'
+                        Id      = 21, 22
+                    } -MaxEvents 100 -ErrorAction SilentlyContinue | Where-Object {
+                        $_.Message -match [regex]::Escape($session.Username) -and
+                        $_.Properties[0].Value -eq $session.ID  # Session ID
+                    } | Select-Object -First 1
+                    
+                    if ($tsLogon) {
+                        $candidateEvents += $tsLogon
+                    }
+                    
+                    # Use the most recent event from all candidates
+                    if ($candidateEvents.Count -gt 0) {
+                        $recentActivity = $candidateEvents | Sort-Object TimeCreated -Descending | Select-Object -First 1
+                        
                         $sourceIP = if ($recentActivity.Message -match '(Source Network Address|Client Address):\s+([^\r\n]+)') { 
                             $matches[2].Trim() 
                         }
@@ -598,7 +639,13 @@ function Get-CurrentRDPSessions {
                             'N/A' 
                         }
                         
-                        $activityType = if ($recentActivity.Id -eq 4778) { "Last activity" } else { "Last logon" }
+                        $activityType = switch ($recentActivity.Id) {
+                            4778 { "Last activity (reconnect)" }
+                            4624 { "Last logon" }
+                            25 { "Last activity (reconnect)" }
+                            { $_ -in 21, 22 } { "Last session activity" }
+                            default { "Last activity" }
+                        }
                     
                         Write-Host "  $(Get-Emoji 'check') " -ForegroundColor Green -NoNewline
                         Write-Host "$($session.Username)" -ForegroundColor Cyan -NoNewline
