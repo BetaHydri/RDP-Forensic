@@ -433,8 +433,10 @@ function Get-RDPForensics {
                 Active            = $session.Lifecycle.Active
                 Disconnect        = $session.Lifecycle.Disconnect
                 Logoff            = $session.Lifecycle.Logoff
-                LifecycleComplete = ($session.Lifecycle.ConnectionAttempt -or $session.Lifecycle.Authentication) -and 
-                $session.Lifecycle.Logon -and 
+                # Lifecycle is complete if session has minimum viable stages (Auth + Logon/Active)
+                # OR if session was terminated (has Logoff)
+                # This avoids false warnings for active sessions or time-window limitations
+                LifecycleComplete = ($session.Lifecycle.Authentication -and ($session.Lifecycle.Logon -or $session.Lifecycle.Active)) -or 
                 $session.Lifecycle.Logoff
                 Events            = $session.Events
             }
@@ -1409,7 +1411,16 @@ function Get-RDPForensics {
                 Write-Host "  $(Get-Emoji 'folder') Events: " -ForegroundColor Cyan -NoNewline
                 Write-Host "$($session.EventCount)" -ForegroundColor White -NoNewline
                 if (-not $session.LifecycleComplete) {
-                    Write-Host "  $(Get-Emoji 'warning') Incomplete session lifecycle!" -ForegroundColor Red
+                    # Provide specific warning based on what's missing
+                    if (-not $session.Authentication -and -not $session.Logon) {
+                        Write-Host "  $(Get-Emoji 'warning') Missing authentication/logon events" -ForegroundColor Yellow
+                    }
+                    elseif ($session.Logoff -and -not $session.Logon) {
+                        Write-Host "  $(Get-Emoji 'warning') Suspicious: Logoff without Logon" -ForegroundColor Red
+                    }
+                    else {
+                        Write-Host "  $(Get-Emoji 'warning') Partial session data (may be active or outside time window)" -ForegroundColor Yellow
+                    }
                 }
                 else {
                     Write-Host ""
