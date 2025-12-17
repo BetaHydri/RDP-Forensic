@@ -55,6 +55,14 @@
             
             # ReleaseNotes of this module
             ReleaseNotes = @'
+Version 1.0.8 (2025-12-17)
+- Added Event 4648 (Explicit Credential Usage) support with time-based correlation
+- Fixed SessionID filtering bug (moved to pre-correlation stage)
+- Implemented PowerShell Parameter Sets (LogonID/SessionID mutual exclusivity)
+- Enhanced lifecycle completion logic (no false warnings for active sessions)
+- Added event table display in GroupBySession output
+- Updated documentation with LogonID vs SessionID filtering best practices
+
 Version 1.0.0 (2025-12-09)
 - Initial release
 - Comprehensive RDP connection lifecycle tracking

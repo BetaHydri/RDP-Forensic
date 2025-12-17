@@ -43,10 +43,6 @@ Describe "Get-CurrentRDPSessions.ps1 - Script Validation" {
     }
     
     Context "Parameter Validation" {
-        It "Should accept SessionID parameter" {
-            { Get-CurrentRDPSessions -SessionID 1 -ErrorAction Stop } | Should -Not -Throw
-        }
-        
         It "Should accept ShowProcesses switch" {
             { Get-CurrentRDPSessions -ShowProcesses -ErrorAction Stop } | Should -Not -Throw
         }
@@ -161,11 +157,33 @@ Describe "Get-CurrentRDPSessions.ps1 - Logging Feature" {
     }
 }
 
-Describe "Get-CurrentRDPSessions.ps1 - Error Handling" {
+Describe "Get-CurrentRDPSessions.ps1 - PowerShell Filtering" {
     
-    Context "Invalid Session ID" {
-        It "Should handle non-existent session ID gracefully" {
-            { Get-CurrentRDPSessions -SessionID 99999 -ErrorAction SilentlyContinue } | Should -Not -Throw
+    Context "Pipeline Filtering Support" {
+        It "Should return objects that can be filtered with Where-Object" {
+            $sessions = Get-CurrentRDPSessions -ErrorAction Stop
+            if ($sessions) {
+                # Test that results are objects with properties
+                $sessions[0].PSObject.Properties.Name | Should -Contain 'ID'
+                $sessions[0].PSObject.Properties.Name | Should -Contain 'Username'
+                $sessions[0].PSObject.Properties.Name | Should -Contain 'State'
+            }
+        }
+
+        It "Should support Where-Object filtering by ID" {
+            { Get-CurrentRDPSessions | Where-Object { $_.ID -ge 0 } } | Should -Not -Throw
+        }
+
+        It "Should support Where-Object filtering by Username" {
+            { Get-CurrentRDPSessions | Where-Object { $_.Username -like "*" } } | Should -Not -Throw
+        }
+
+        It "Should support Where-Object filtering by State" {
+            { Get-CurrentRDPSessions | Where-Object { $_.State -match 'Active|Disc' } } | Should -Not -Throw
+        }
+
+        It "Should support complex Where-Object filters" {
+            { Get-CurrentRDPSessions | Where-Object { $_.ID -gt 0 -and $_.Username -ne 'N/A' } } | Should -Not -Throw
         }
     }
 }

@@ -8,12 +8,10 @@ function Get-CurrentRDPSessions {
 .DESCRIPTION
     Shows currently logged-on RDP users, their session IDs, states, and processes.
     Useful for real-time monitoring and quick session overview.
-
-.PARAMETER SessionID
-    Optional session ID to get detailed information about a specific session.
+    Use standard PowerShell filtering (Where-Object) to filter by specific sessions.
 
 .PARAMETER ShowProcesses
-    Show running processes for each session.
+    Show running processes for each active session.
 
 .PARAMETER Watch
     Enable continuous monitoring mode with auto-refresh. Press Ctrl+C to exit.
@@ -30,8 +28,12 @@ function Get-CurrentRDPSessions {
     Display all current RDP sessions.
 
 .EXAMPLE
-    Get-CurrentRDPSessions -SessionID 3 -ShowProcesses
-    Show detailed information and processes for session 3.
+    Get-CurrentRDPSessions -ShowProcesses
+    Show detailed information and processes for all active sessions.
+
+.EXAMPLE
+    Get-CurrentRDPSessions | Where-Object { $_.ID -eq 3 }
+    Filter output to show only session ID 3 using standard PowerShell.
 
 .EXAMPLE
     Get-CurrentRDPSessions -Watch
@@ -68,9 +70,6 @@ function Get-CurrentRDPSessions {
 
     [CmdletBinding()]
     param(
-        [Parameter()]
-        [int]$SessionID,
-    
         [Parameter()]
         [switch]$ShowProcesses,
 
@@ -540,16 +539,9 @@ function Get-CurrentRDPSessions {
                 # Display sessions with extended properties
                 $sessionObjects | Select-Object SessionName, Username, ID, State, ClientIP, ClientName, ConnectTime, IdleTime, ClientBuild, ClientDisplay | Format-Table -AutoSize
             
-                # Show processes for specific session or all if requested
+                # Show processes for all sessions if requested
                 if ($ShowProcesses) {
-                    if ($SessionID) {
-                        $targetSessions = $sessionObjects | Where-Object { $_.ID -eq $SessionID }
-                    }
-                    else {
-                        $targetSessions = $sessionObjects
-                    }
-                
-                    foreach ($session in $targetSessions) {
+                    foreach ($session in $sessionObjects) {
                         Write-Host "`n$(Get-Emoji 'computer') Processes for Session " -ForegroundColor Yellow -NoNewline
                         Write-Host "$($session.ID)" -ForegroundColor White -NoNewline
                         Write-Host " - User: " -ForegroundColor Yellow -NoNewline

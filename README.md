@@ -258,12 +258,16 @@ This screenshot shows:
 | `IncludeOutbound` | Switch | Include outbound RDP connections | False |
 | `GroupBySession` | Switch | Correlate events by LogonID/SessionID | False |
 | `LogonID` | String | Filter by specific LogonID (hex format: 0x12345) | None |
-| `SessionID` | Int | Filter by specific SessionID | None |
+| `SessionID` | String | Filter by specific SessionID | None |
+
+> **⚠️ MUTUAL EXCLUSIVITY:** LogonID and SessionID parameters cannot be used together (enforced via PowerShell Parameter Sets). PowerShell will automatically prevent this combination and display a clear error message.
 | `IncludeCredentialValidation` | Switch | Include Kerberos/NTLM events (DC only) | False |
 
 ## 🎯 Forensic Analysis Best Practices
 
 ### Understanding LogonID vs SessionID Filtering
+
+⚠️ **IMPORTANT:** LogonID and SessionID parameters are **mutually exclusive** - you cannot use both in the same command. PowerShell enforces this automatically via Parameter Sets and will display an error if you attempt to use both.
 
 When investigating RDP sessions, understanding the difference between **LogonID** and **SessionID** filtering is crucial for comprehensive forensic analysis:
 
@@ -381,6 +385,30 @@ Get-RDPForensics -GroupBySession -LogonID $suspiciousLogonID -ExportPath "C:\Inv
 - Full timeline showing exactly when and how session was active
 - Evidence of disconnects vs logoffs
 
+### Parameter Combinations
+
+**✅ VALID Combinations:**
+```powershell
+# LogonID with other parameters
+Get-RDPForensics -GroupBySession -LogonID 0x12345 -Username user -ExportPath "C:\Reports"
+
+# SessionID with other parameters
+Get-RDPForensics -GroupBySession -SessionID 4 -SourceIP "192.168.1.100" -ExportPath "C:\Reports"
+
+# No filter (all sessions)
+Get-RDPForensics -GroupBySession -Username user -SourceIP "192.168.1.100"
+```
+
+**❌ INVALID Combination (PowerShell will reject):**
+```powershell
+# This will produce an error:
+Get-RDPForensics -GroupBySession -LogonID 0x12345 -SessionID 4
+
+# Error message:
+# Parameter set cannot be resolved using the specified named parameters.
+# One or more parameters issued cannot be used together or an insufficient number of parameters were provided.
+```
+
 ### Quick Reference
 
 | Investigation Goal | Recommended Command |
@@ -420,8 +448,11 @@ Get-CurrentRDPSessions
 # Show processes for all sessions
 Get-CurrentRDPSessions -ShowProcesses
 
-# Get detailed info for specific session
-Get-CurrentRDPSessions -SessionID 3 -ShowProcesses
+# Filter to specific session using PowerShell pipeline
+Get-CurrentRDPSessions | Where-Object { $_.ID -eq 3 }
+
+# Filter by username
+Get-CurrentRDPSessions | Where-Object { $_.Username -like "*admin*" }
 
 # REAL-TIME MONITORING: Auto-refresh every 5 seconds (default)
 Get-CurrentRDPSessions -Watch
