@@ -116,7 +116,7 @@ function Get-RDPForensics {
     Requires: Administrator privileges to read Security event logs
 #>
 
-    [CmdletBinding()]
+    [CmdletBinding(DefaultParameterSetName = 'Default')]
     param(
         [Parameter()]
         [DateTime]$StartDate = (Get-Date -Hour 0 -Minute 0 -Second 0),
