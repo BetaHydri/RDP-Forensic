@@ -359,11 +359,13 @@ function Get-CurrentRDPSessions {
                             $clientBuild = Get-WTSSessionInfo -SessionId $id -InfoClass ([WTS_INFO_CLASS]::WTSClientBuildNumber)
                             $clientDisplay = Get-WTSSessionInfo -SessionId $id -InfoClass ([WTS_INFO_CLASS]::WTSClientDisplay)
                             $idleTime = Get-WTSSessionInfo -SessionId $id -InfoClass ([WTS_INFO_CLASS]::WTSIdleTime)
-                            $connectTime = Get-WTSSessionInfo -SessionId $id -InfoClass ([WTS_INFO_CLASS]::WTSLogonTime)
+                            $wtsConnectTime = Get-WTSSessionInfo -SessionId $id -InfoClass ([WTS_INFO_CLASS]::WTSLogonTime)
                             
-                            # Fallback to Event Log if WTS doesn't have logon time
-                            # Check for both initial logon (4624) and reconnection (4778)
-                            if (-not $connectTime -and $username -and $username -ne '') {
+                            # Always check Event Log for most accurate connection time
+                            # WTS API may return stale data for new sessions after logoff/logon
+                            $eventLogConnectTime = $null
+                            
+                            if ($username -and $username -ne '') {
                                 # First check for recent reconnection (4778) - most recent activity
                                 $reconnectEvent = Get-WinEvent -FilterHashtable @{
                                     LogName = 'Security'
@@ -374,10 +376,10 @@ function Get-CurrentRDPSessions {
                                 } | Select-Object -First 1
                                 
                                 if ($reconnectEvent) {
-                                    $connectTime = $reconnectEvent.TimeCreated
+                                    $eventLogConnectTime = $reconnectEvent.TimeCreated
                                 }
                                 else {
-                                    # Fallback to initial logon (4624)
+                                    # Fallback to initial logon (4624) - look for recent logons only
                                     $logonEvent = Get-WinEvent -FilterHashtable @{
                                         LogName = 'Security'
                                         Id      = 4624
@@ -388,9 +390,28 @@ function Get-CurrentRDPSessions {
                                     } | Select-Object -First 1
                                     
                                     if ($logonEvent) {
-                                        $connectTime = $logonEvent.TimeCreated
+                                        $eventLogConnectTime = $logonEvent.TimeCreated
                                     }
                                 }
+                            }
+                            
+                            # Use the most recent time between WTS API and Event Log
+                            # This handles cases where WTS returns stale data
+                            $connectTime = if ($eventLogConnectTime -and $wtsConnectTime) {
+                                # Both available - use most recent
+                                if ($eventLogConnectTime -gt $wtsConnectTime) { $eventLogConnectTime } else { $wtsConnectTime }
+                            }
+                            elseif ($eventLogConnectTime) {
+                                # Only Event Log available
+                                $eventLogConnectTime
+                            }
+                            elseif ($wtsConnectTime) {
+                                # Only WTS available
+                                $wtsConnectTime
+                            }
+                            else {
+                                # No time available
+                                $null
                             }
                             
                             # Calculate idle time in readable format
