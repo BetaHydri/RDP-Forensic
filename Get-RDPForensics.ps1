@@ -1344,12 +1344,14 @@ function Get-RDPForensics {
                 Write-Host "  $(Get-Emoji 'warning') No sessions found with SessionID: $SessionID" -ForegroundColor Yellow
             }
             else {
-                # Filter events within each session to only show events with matching SessionID or null SessionID
-                # (Security events don't have SessionID but are part of the same logical session)
+                # Filter events within each session to only show events with matching SessionID
+                # Security events (no SessionID) are kept, but Terminal Services events from other SessionIDs are excluded
                 foreach ($session in $sessions) {
                     $matchingEvents = $session.Events | Where-Object { 
-                        -not $_.SessionID -or $_.SessionID -eq 'N/A' -or 
-                        $_.SessionID -eq $SessionID -or $_.SessionID -eq [string]$SessionID 
+                        # Match exact SessionID
+                        ($_.SessionID -eq $SessionID -or $_.SessionID -eq [string]$SessionID) -or
+                        # OR include Security log events (which never have SessionID) - EventID 1149, 4624-4648, 4768-4779, 4800-4801, 4634, 4647, 9009
+                        ((-not $_.SessionID -or $_.SessionID -eq 'N/A') -and $_.EventID -in @(1149, 4624, 4625, 4648, 4768, 4769, 4770, 4771, 4772, 4776, 4778, 4779, 4800, 4801, 4634, 4647, 9009))
                     }
                     $session.Events = @($matchingEvents)
                     $session.EventCount = $matchingEvents.Count
