@@ -34,12 +34,14 @@ function Get-RDPForensics {
 .PARAMETER LogonID
     Filter results for a specific LogonID (e.g., '0x6950A4').
     Only applicable when using -GroupBySession.
-    Useful for tracking specific Security log authenticated sessions.
+    RECOMMENDED: LogonID provides the most reliable correlation as it persists across disconnect/reconnect cycles.
+    Cannot be used together with -SessionID (mutually exclusive).
 
 .PARAMETER SessionID
-    Filter results for a specific SessionID (e.g., '5').
+    Filter results for a specific Terminal Services SessionID (e.g., '5').
     Only applicable when using -GroupBySession.
-    Useful for tracking specific TerminalServices sessions.
+    NOTE: SessionID changes on disconnect/reconnect. Use -LogonID for tracking full session lifecycle.
+    Cannot be used together with -LogonID (mutually exclusive).
 
 .PARAMETER IncludeOutbound
     Include outbound RDP connection logs from the client side.
@@ -131,10 +133,10 @@ function Get-RDPForensics {
         [Parameter()]
         [string]$SourceIP,
     
-        [Parameter()]
+        [Parameter(ParameterSetName = 'ByLogonID')]
         [string]$LogonID,
     
-        [Parameter()]
+        [Parameter(ParameterSetName = 'BySessionID')]
         [string]$SessionID,
     
         [Parameter()]
@@ -1303,6 +1305,15 @@ function Get-RDPForensics {
         Write-Host "Filtering for source IP: $SourceIP" -ForegroundColor Cyan
         $allEvents = $allEvents | Where-Object { $_.SourceIP -like "*$SourceIP*" }
     }
+    
+    if ($SessionID) {
+        Write-Host "Filtering for SessionID: $SessionID" -ForegroundColor Cyan
+        # Filter events to only those matching SessionID OR Security events without SessionID
+        $allEvents = $allEvents | Where-Object {
+            ($_.SessionID -eq $SessionID -or $_.SessionID -eq [string]$SessionID) -or
+            ((-not $_.SessionID -or $_.SessionID -eq 'N/A') -and $_.EventID -in @(1149, 4624, 4625, 4648, 4768, 4769, 4770, 4771, 4772, 4776, 4778, 4779, 4800, 4801, 4634, 4647, 9009))
+        }
+    }
 
     # Sort by time
     $allEvents = $allEvents | Sort-Object TimeCreated -Descending
@@ -1334,33 +1345,8 @@ function Get-RDPForensics {
             }
         }
         
-        if ($SessionID) {
-            Write-Host "  $(Get-Emoji 'magnify') Filtering for SessionID: $SessionID" -ForegroundColor Cyan
-            # Filter sessions that contain events with the specified SessionID
-            $sessions = $sessions | Where-Object { 
-                $_.Events | Where-Object { $_.SessionID -eq $SessionID -or $_.SessionID -eq [string]$SessionID }
-            }
-            if ($sessions.Count -eq 0) {
-                Write-Host "  $(Get-Emoji 'warning') No sessions found with SessionID: $SessionID" -ForegroundColor Yellow
-            }
-            else {
-                # Filter events within each session to only show events with matching SessionID
-                # Security events (no SessionID) are kept, but Terminal Services events from other SessionIDs are excluded
-                foreach ($session in $sessions) {
-                    $matchingEvents = $session.Events | Where-Object { 
-                        # Match exact SessionID
-                        ($_.SessionID -eq $SessionID -or $_.SessionID -eq [string]$SessionID) -or
-                        # OR include Security log events (which never have SessionID) - EventID 1149, 4624-4648, 4768-4779, 4800-4801, 4634, 4647, 9009
-                        ((-not $_.SessionID -or $_.SessionID -eq 'N/A') -and $_.EventID -in @(1149, 4624, 4625, 4648, 4768, 4769, 4770, 4771, 4772, 4776, 4778, 4779, 4800, 4801, 4634, 4647, 9009))
-                    }
-                    $session.Events = @($matchingEvents)
-                    $session.EventCount = $matchingEvents.Count
-                }
-            }
-        }
-        
         # Update event list to show only events from filtered sessions
-        if ($LogonID -or $SessionID) {
+        if ($LogonID) {
             $allEvents = @($sessions | ForEach-Object { $_.Events }) | Sort-Object TimeCreated -Descending
         }
     }
