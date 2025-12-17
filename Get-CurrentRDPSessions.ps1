@@ -366,8 +366,7 @@ function Get-CurrentRDPSessions {
                             $eventLogConnectTime = $null
                             
                             if ($username -and $username -ne '') {
-                                # First check for recent reconnection (4778) - most recent activity
-                                # Note: Event 4778 has LogonID but not SessionID, so we match by username only
+                                # Priority 1: Check Security Event 4778 (reconnection)
                                 $reconnectEvent = Get-WinEvent -FilterHashtable @{
                                     LogName = 'Security'
                                     Id      = 4778
@@ -378,8 +377,24 @@ function Get-CurrentRDPSessions {
                                 if ($reconnectEvent) {
                                     $eventLogConnectTime = $reconnectEvent.TimeCreated
                                 }
-                                else {
-                                    # Fallback to initial logon (4624) - look for recent logons only
+                                
+                                # Priority 2: Check Terminal Services Event 25 (reconnection)
+                                if (-not $eventLogConnectTime) {
+                                    $tsReconnect = Get-WinEvent -FilterHashtable @{
+                                        LogName = 'Microsoft-Windows-TerminalServices-LocalSessionManager/Operational'
+                                        Id      = 25
+                                    } -MaxEvents 50 -ErrorAction SilentlyContinue | Where-Object {
+                                        $_.Message -match [regex]::Escape($username) -and
+                                        $_.Properties[0].Value -eq $id  # Session ID
+                                    } | Select-Object -First 1
+                                    
+                                    if ($tsReconnect) {
+                                        $eventLogConnectTime = $tsReconnect.TimeCreated
+                                    }
+                                }
+                                
+                                # Priority 3: Check Security Event 4624 (initial logon)
+                                if (-not $eventLogConnectTime) {
                                     $logonEvent = Get-WinEvent -FilterHashtable @{
                                         LogName = 'Security'
                                         Id      = 4624
@@ -391,6 +406,21 @@ function Get-CurrentRDPSessions {
                                     
                                     if ($logonEvent) {
                                         $eventLogConnectTime = $logonEvent.TimeCreated
+                                    }
+                                }
+                                
+                                # Priority 4: Check Terminal Services Event 21 (session logon) or 22 (shell start)
+                                if (-not $eventLogConnectTime) {
+                                    $tsLogon = Get-WinEvent -FilterHashtable @{
+                                        LogName = 'Microsoft-Windows-TerminalServices-LocalSessionManager/Operational'
+                                        Id      = 21, 22
+                                    } -MaxEvents 100 -ErrorAction SilentlyContinue | Where-Object {
+                                        $_.Message -match [regex]::Escape($username) -and
+                                        $_.Properties[0].Value -eq $id  # Session ID
+                                    } | Select-Object -First 1
+                                    
+                                    if ($tsLogon) {
+                                        $eventLogConnectTime = $tsLogon.TimeCreated
                                     }
                                 }
                             }
