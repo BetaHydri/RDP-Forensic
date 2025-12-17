@@ -133,9 +133,9 @@ Describe "Get-RDPForensics Session Correlation Tests" {
             $functionContent | Should -Match 'Time-based correlation.*pre-authentication'
         }
         
-        It "Should include all pre-auth EventIDs in correlation" {
+        It "Should include all pre-auth EventIDs in correlation (including 4648)" {
             $functionContent = Get-Content "$ModulePath\Get-RDPForensics.ps1" -Raw
-            $functionContent | Should -Match '4768.*4769.*4770.*4771.*4772.*4776'
+            $functionContent | Should -Match '4648.*4768.*4769.*4770.*4771.*4772.*4776'
         }
         
         It "Should match pre-auth events within time window" {
@@ -226,12 +226,12 @@ Describe "Get-RDPForensics Session Correlation Tests" {
             $version = (Get-Command Get-RDPForensics).Version
             $version.Major | Should -BeGreaterOrEqual 1
             $version.Minor | Should -BeGreaterOrEqual 0
-            $version.Build | Should -BeGreaterOrEqual 7
+            $version.Build | Should -BeGreaterOrEqual 8
         }
         
-        It "Module manifest should show version 1.0.7" {
+        It "Module manifest should show version 1.0.8" {
             $manifest = Test-ModuleManifest "$ModulePath\RDP-Forensic.psd1" -ErrorAction SilentlyContinue
-            $manifest.Version.ToString() | Should -Be '1.0.7'
+            $manifest.Version.ToString() | Should -Be '1.0.8'
         }
     }
     
@@ -397,6 +397,103 @@ Describe "Get-RDPForensics Session Correlation Tests" {
         It "Should check for RDP event types (4624/4778/4779) in LogonID sessions" {
             $functionContent = Get-Content "$ModulePath\Get-RDPForensics.ps1" -Raw
             $functionContent | Should -Match '4624.*4778.*4779'
+        }
+    }
+    
+    Context "v1.0.8 Feature - Event 4648 Support" {
+        It "Should exclude Event 4648 from direct LogonID correlation" {
+            $functionContent = Get-Content "$ModulePath\Get-RDPForensics.ps1" -Raw
+            $functionContent | Should -Match 'EventID -ne 4648.*LogonID'
+        }
+        
+        It "Should include Event 4648 in time-based correlation" {
+            $functionContent = Get-Content "$ModulePath\Get-RDPForensics.ps1" -Raw
+            $functionContent | Should -Match 'EventID -in 4648.*4768.*4769'
+        }
+        
+        It "Should parse Event 4648 Subject information" {
+            $functionContent = Get-Content "$ModulePath\Get-RDPForensics.ps1" -Raw
+            $functionContent | Should -Match 'Subject:.*Account Name:'
+        }
+        
+        It "Should parse Event 4648 Target information" {
+            $functionContent = Get-Content "$ModulePath\Get-RDPForensics.ps1" -Raw
+            $functionContent | Should -Match 'Account Whose Credentials Were Used:.*Account Name:'
+        }
+        
+        It "Should parse Event 4648 Target Server" {
+            $functionContent = Get-Content "$ModulePath\Get-RDPForensics.ps1" -Raw
+            $functionContent | Should -Match 'Target Server:.*Target Server Name:'
+        }
+        
+        It "Should parse Event 4648 Process Name" {
+            $functionContent = Get-Content "$ModulePath\Get-RDPForensics.ps1" -Raw
+            $functionContent | Should -Match 'Process Information:.*Process Name:'
+        }
+        
+        It "Should set EventType to 'Credential Submission' for 4648" {
+            $functionContent = Get-Content "$ModulePath\Get-RDPForensics.ps1" -Raw
+            $functionContent | Should -Match "4648.*'Credential Submission'"
+        }
+    }
+    
+    Context "v1.0.8 Feature - Parameter Sets (Mutual Exclusivity)" {
+        It "LogonID parameter should be in ByLogonID parameter set" {
+            $param = (Get-Command Get-RDPForensics).Parameters['LogonID']
+            $paramSets = $param.Attributes | Where-Object { $_ -is [System.Management.Automation.ParameterAttribute] }
+            $paramSets.ParameterSetName | Should -Contain 'ByLogonID'
+        }
+        
+        It "SessionID parameter should be in BySessionID parameter set" {
+            $param = (Get-Command Get-RDPForensics).Parameters['SessionID']
+            $paramSets = $param.Attributes | Where-Object { $_ -is [System.Management.Automation.ParameterAttribute] }
+            $paramSets.ParameterSetName | Should -Contain 'BySessionID'
+        }
+        
+        It "Username parameter should not be restricted to a parameter set" {
+            $param = (Get-Command Get-RDPForensics).Parameters['Username']
+            # Should be available in all parameter sets (no specific set name)
+            $param | Should -Not -BeNullOrEmpty
+        }
+        
+        It "SourceIP parameter should not be restricted to a parameter set" {
+            $param = (Get-Command Get-RDPForensics).Parameters['SourceIP']
+            # Should be available in all parameter sets
+            $param | Should -Not -BeNullOrEmpty
+        }
+        
+        It "Should reject using both LogonID and SessionID in same command" {
+            { Get-RDPForensics -LogonID '0x12345' -SessionID '3' -StartDate (Get-Date) -ErrorAction Stop } | 
+            Should -Throw
+        }
+    }
+    
+    Context "v1.0.8 Enhancement - Lifecycle Completion Logic" {
+        It "Should accept active sessions as complete (no Logoff required)" {
+            $functionContent = Get-Content "$ModulePath\Get-RDPForensics.ps1" -Raw
+            # New logic: (Auth AND (Logon OR Active)) OR Logoff
+            $functionContent | Should -Match 'Authentication.*and.*\(.*Logon.*or.*Active.*\)'
+        }
+        
+        It "Should provide specific warning messages for incomplete sessions" {
+            $functionContent = Get-Content "$ModulePath\Get-RDPForensics.ps1" -Raw
+            $functionContent | Should -Match 'Missing authentication/logon events'
+            $functionContent | Should -Match 'Suspicious: Logoff without Logon'
+            $functionContent | Should -Match 'Partial session data'
+        }
+    }
+    
+    Context "v1.0.8 Enhancement - SessionID Early Filtering" {
+        It "Should filter SessionID BEFORE correlation (pre-correlation)" {
+            $functionContent = Get-Content "$ModulePath\Get-RDPForensics.ps1" -Raw
+            # SessionID filter should appear before Get-CorrelatedSessions call
+            $beforeCorrelation = $functionContent -split 'Get-CorrelatedSessions' | Select-Object -First 1
+            $beforeCorrelation | Should -Match 'if.*\$SessionID.*Where-Object'
+        }
+        
+        It "Should whitelist Security events by EventID when filtering SessionID" {
+            $functionContent = Get-Content "$ModulePath\Get-RDPForensics.ps1" -Raw
+            $functionContent | Should -Match 'EventID -in @\(1149, 4624'
         }
     }
 }

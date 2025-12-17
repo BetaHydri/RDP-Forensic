@@ -202,7 +202,7 @@ Describe "Get-RDPForensics.ps1 - Event Collection" {
         }
         
         It "Should return events with valid EventIDs" {
-            $validEventIDs = @(1149, 4624, 4625, 4768, 4769, 4770, 4771, 4772, 4776, 21, 22, 23, 24, 25, 39, 40, 4778, 4779, 4800, 4801, 4634, 4647, 9009, 1102)
+            $validEventIDs = @(1149, 4624, 4625, 4648, 4768, 4769, 4770, 4771, 4772, 4776, 21, 22, 23, 24, 25, 39, 40, 4778, 4779, 4800, 4801, 4634, 4647, 9009, 1102)
             if ($script:TestResults.Count -gt 0) {
                 $script:TestResults | ForEach-Object {
                     $validEventIDs | Should -Contain $_.EventID
@@ -405,6 +405,81 @@ Describe "Get-RDPForensics.ps1 - Event Type Coverage" {
         It "Should check for Logoff Events (4634, 4647, 9009)" {
             # Test passes if script runs without error
             $script:AllEvents | Should -Not -BeNullOrEmpty -Because "Script should return results or empty array"
+        }
+    }
+}
+
+Describe "Get-RDPForensics.ps1 - Parameter Sets (LogonID/SessionID Mutual Exclusivity)" {
+    
+    Context "Parameter Set Validation" {
+        It "LogonID and SessionID should be in different parameter sets" {
+            $logonIDParam = (Get-Command Get-RDPForensics).Parameters['LogonID']
+            $sessionIDParam = (Get-Command Get-RDPForensics).Parameters['SessionID']
+            
+            $logonIDParam.ParameterSets.Keys | Should -Contain 'ByLogonID'
+            $sessionIDParam.ParameterSets.Keys | Should -Contain 'BySessionID'
+        }
+        
+        It "Should reject using both LogonID and SessionID together" {
+            # This should fail due to parameter set conflict
+            { & $script:ScriptPath -LogonID '0x12345' -SessionID '3' -StartDate (Get-Date) -ErrorAction Stop } | 
+            Should -Throw
+        }
+        
+        It "Should accept LogonID without SessionID" {
+            { & $script:ScriptPath -LogonID '0x12345' -GroupBySession -StartDate (Get-Date) -ErrorAction Stop } | 
+            Should -Not -Throw
+        }
+        
+        It "Should accept SessionID without LogonID" {
+            { & $script:ScriptPath -SessionID '3' -GroupBySession -StartDate (Get-Date) -ErrorAction Stop } | 
+            Should -Not -Throw
+        }
+        
+        It "Should accept neither LogonID nor SessionID" {
+            { & $script:ScriptPath -GroupBySession -StartDate (Get-Date) -ErrorAction Stop } | 
+            Should -Not -Throw
+        }
+        
+        It "Other parameters should work with any parameter set" {
+            # Username, SourceIP, ExportPath should work with LogonID
+            { & $script:ScriptPath -LogonID '0x12345' -Username 'admin' -StartDate (Get-Date) -ErrorAction Stop } | 
+            Should -Not -Throw
+            
+            # Username, SourceIP, ExportPath should work with SessionID
+            { & $script:ScriptPath -SessionID '3' -SourceIP '192.168.1.1' -StartDate (Get-Date) -ErrorAction Stop } | 
+            Should -Not -Throw
+        }
+    }
+}
+
+Describe "Get-RDPForensics.ps1 - Event 4648 (Explicit Credential Usage)" {
+    
+    Context "Event 4648 Collection" {
+        It "Should collect 4648 events with IncludeCredentialValidation" {
+            $results = & $script:ScriptPath -IncludeCredentialValidation -StartDate (Get-Date).AddDays(-1)
+            # May or may not have 4648 events, but script should run without error
+            $results | Should -Not -BeNullOrEmpty
+        }
+        
+        It "Should parse 4648 event properties correctly" {
+            $results = & $script:ScriptPath -IncludeCredentialValidation -StartDate (Get-Date).AddDays(-1)
+            $event4648 = $results | Where-Object { $_.EventID -eq 4648 } | Select-Object -First 1
+            if ($event4648) {
+                $event4648.PSObject.Properties.Name | Should -Contain 'User'
+                $event4648.PSObject.Properties.Name | Should -Contain 'EventType'
+                $event4648.PSObject.Properties.Name | Should -Contain 'Details'
+                $event4648.EventType | Should -Be 'Credential Submission'
+            }
+            else {
+                Set-ItResult -Skipped -Because "No 4648 events found in time range"
+            }
+        }
+        
+        It "Should use time-based correlation for 4648 events" {
+            # Event 4648 should NOT use direct LogonID correlation
+            $functionContent = Get-Content -Path $script:ScriptPath -Raw
+            $functionContent | Should -Match 'Event 4648.*time-based correlation'
         }
     }
 }
