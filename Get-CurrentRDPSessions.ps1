@@ -362,18 +362,34 @@ function Get-CurrentRDPSessions {
                             $connectTime = Get-WTSSessionInfo -SessionId $id -InfoClass ([WTS_INFO_CLASS]::WTSLogonTime)
                             
                             # Fallback to Event Log if WTS doesn't have logon time
-                            if (-not $connectTime -and $username -and $username -ne '' -and $clientIP) {
-                                $logonEvent = Get-WinEvent -FilterHashtable @{
+                            # Check for both initial logon (4624) and reconnection (4778)
+                            if (-not $connectTime -and $username -and $username -ne '') {
+                                # First check for recent reconnection (4778) - most recent activity
+                                $reconnectEvent = Get-WinEvent -FilterHashtable @{
                                     LogName = 'Security'
-                                    Id      = 4624
-                                } -MaxEvents 100 -ErrorAction SilentlyContinue | Where-Object {
-                                    $_.Message -match [regex]::Escape($username) -and 
-                                    $_.Message -match 'Logon Type:\s+(10|7)\s' -and
-                                    $_.Message -match [regex]::Escape($clientIP)
+                                    Id      = 4778
+                                } -MaxEvents 50 -ErrorAction SilentlyContinue | Where-Object {
+                                    $_.Message -match [regex]::Escape($username) -and
+                                    $_.Properties[5].Value -eq $id  # Session ID property
                                 } | Select-Object -First 1
                                 
-                                if ($logonEvent) {
-                                    $connectTime = $logonEvent.TimeCreated
+                                if ($reconnectEvent) {
+                                    $connectTime = $reconnectEvent.TimeCreated
+                                }
+                                else {
+                                    # Fallback to initial logon (4624)
+                                    $logonEvent = Get-WinEvent -FilterHashtable @{
+                                        LogName = 'Security'
+                                        Id      = 4624
+                                    } -MaxEvents 100 -ErrorAction SilentlyContinue | Where-Object {
+                                        $_.Message -match [regex]::Escape($username) -and 
+                                        $_.Message -match 'Logon Type:\s+(10|7)\s' -and
+                                        ($clientIP -and $_.Message -match [regex]::Escape($clientIP))
+                                    } | Select-Object -First 1
+                                    
+                                    if ($logonEvent) {
+                                        $connectTime = $logonEvent.TimeCreated
+                                    }
                                 }
                             }
                             
