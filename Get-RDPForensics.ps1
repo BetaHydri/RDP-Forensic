@@ -1352,7 +1352,8 @@ function Get-RDPForensics {
             }
             if ($sessions.Count -eq 0) {
                 Write-Host "  $(Get-Emoji 'warning') No sessions found with SessionID: $SessionID" -ForegroundColor Yellow
-            } else {
+            }
+            else {
                 # Update event list to only show events from filtered sessions
                 $allEvents = @($sessions | ForEach-Object { $_.Events }) | Sort-Object TimeCreated -Descending
             }
@@ -1362,7 +1363,8 @@ function Get-RDPForensics {
             $sessions = $sessions | Where-Object { $_.LogonID -eq $LogonID }
             if ($sessions.Count -eq 0) {
                 Write-Host "  $(Get-Emoji 'warning') No sessions found with LogonID: $LogonID" -ForegroundColor Yellow
-            } else {
+            }
+            else {
                 # Update event list to only show events from filtered sessions
                 $allEvents = @($sessions | ForEach-Object { $_.Events }) | Sort-Object TimeCreated -Descending
             }
