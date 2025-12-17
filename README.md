@@ -97,6 +97,7 @@ The main forensics analysis cmdlet (Get-RDPForensics) collects and analyzes RDP 
 | Event Type | Event IDs | Logged On | Tool Scope |
 |------------|-----------|-----------|------------|
 | **RDP Sessions** | 1149, 21-25, 39, 40, 4624, 4778, 4779 | Terminal Server | ✅ Primary use case |
+| **Credential Submission** | 4648 | Terminal Server | ✅ NEW in v1.0.8 |
 | **Kerberos Auth** | 4768-4772 | **Domain Controller** | ⚠️ DC only |
 | **NTLM Auth** | 4776 | **Domain Controller** | ⚠️ DC only |
 
@@ -109,6 +110,7 @@ Most RDP events (1149, 21-25, 39, 40, 9009) are logged by default in Terminal Se
 **Events requiring audit policies (ON TERMINAL SERVER):**
 - EventID 4624, 4625 (Logon/Failed Logon) - Requires "Audit Logon Events"
 - EventID 4634, 4647 (Logoff) - Requires "Audit Logon Events"
+- EventID 4648 (Explicit Credential Usage) - Requires "Audit Logon Events" - NEW in v1.0.8
 - EventID 4778, 4779 (Session Reconnect/Disconnect) - Requires "Audit Other Logon/Logoff Events"
 - EventID 4800, 4801 (Workstation Lock/Unlock) - Requires "Audit Other Logon/Logoff Events"
 
@@ -527,6 +529,9 @@ The tool now displays comprehensive session information:
 
 ### Connection Attempts
 - **1149** - Remote Desktop Services: User authentication succeeded (RemoteConnectionManager)
+
+### Credential Submission (NEW in v1.0.8)
+- **4648** - Explicit credential usage (logs credential submission before actual logon, includes Subject, Target, Server, Process)
 
 ### Authentication
 - **4624** - An account was successfully logged on

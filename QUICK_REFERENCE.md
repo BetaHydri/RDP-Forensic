@@ -13,6 +13,9 @@
 CONNECTION ATTEMPTS
 ├─ 1149: Connection attempt (RemoteConnectionManager)
 
+CREDENTIAL SUBMISSION (NEW v1.0.8)
+└─ 4648: Explicit credential usage (Security) - Logs credential submission BEFORE logon
+
 AUTHENTICATION
 ├─ 4624: Successful logon (Security)
 ├─ 4625: Failed logon (Security)
