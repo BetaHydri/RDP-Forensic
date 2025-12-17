@@ -59,6 +59,11 @@ function Get-CurrentRDPSessions {
     - New properties: IdleTime, ClientIPAddress, ClientName, EncryptionLevel
     - New properties: ConnectTime, ClientBuildNumber, ClientDisplay, ColorDepth
     - Improved accuracy without Event Log dependency for basic info
+    - ConnectTime uses multi-source event collection for accuracy:
+      * Security Events: 4778 (reconnection), 4624 (logon)
+      * Terminal Services Events: 25 (reconnection), 21/22 (session logon)
+      * Automatically uses most recent event across all sources
+      * Works with or without Security audit policies enabled
 #>
 
     [CmdletBinding()]
