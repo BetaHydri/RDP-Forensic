@@ -295,7 +295,7 @@ function Get-RDPForensics {
                 $session = $sessionMap[$sessionKey]
                 $matchUser = $session.User -eq $preAuthEvent.User
                 $matchIP = (-not $preAuthEvent.SourceIP -or $preAuthEvent.SourceIP -eq 'N/A' -or 
-                           $session.SourceIP -eq $preAuthEvent.SourceIP)
+                    $session.SourceIP -eq $preAuthEvent.SourceIP)
                 
                 if ($matchUser -and $matchIP) {
                     $sessionStart = ($session.Events | Sort-Object TimeCreated | Select-Object -First 1).TimeCreated
