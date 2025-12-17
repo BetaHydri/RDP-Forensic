@@ -798,7 +798,7 @@ function Get-RDPForensics {
                             $userDomain = $targetDomain
                             
                             $eventType = 'Credential Submission'
-                            $details = "Subject: $subjectFullName → Target: $targetFullName | Server: $targetServerName | Process: $(Split-Path $processName -Leaf)"
+                            $details = "Subject: $subjectFullName -> Target: $targetFullName | Server: $targetServerName | Process: $(Split-Path $processName -Leaf)"
                             
                             [PSCustomObject]@{
                                 TimeCreated = $event.TimeCreated
