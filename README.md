@@ -246,7 +246,6 @@ This screenshot shows:
 - **Event 4624** - Successful logon with Logon Type 10 (RemoteInteractive)
 - **Complete timeline** - Full authentication flow from credential entry to session establishment
 - **Correlation** - All events linked by LogonID for complete session picture
-```
 
 **Parameters:**
 
@@ -262,9 +261,14 @@ This screenshot shows:
 | `LogonID` | String | Filter by specific LogonID (hex format: 0x12345) | None |
 | `SessionID` | String | Filter by specific SessionID | None |
 
-> **⚠️ MUTUAL EXCLUSIVITY:** LogonID and SessionID parameters cannot be used together (enforced via PowerShell Parameter Sets). PowerShell will automatically prevent this combination and display a clear error message.
+> **⚠️ MUTUAL EXCLUSIVITY:** 
+LogonID and SessionID parameters cannot be used together (enforced via PowerShell Parameter Sets). PowerShell will automatically prevent this combination and display a clear error message.
+
+| Parameter | Type | Description | Default |
+|-----------|------|-------------|---------|
 | `IncludeCredentialValidation` | Switch | Include Kerberos/NTLM events (DC only) | False |
 
+```
 ## 🎯 Forensic Analysis Best Practices
 
 ### Understanding LogonID vs SessionID Filtering
