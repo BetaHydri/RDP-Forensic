@@ -243,6 +243,7 @@ For pre-authentication events from the Domain Controller:
 | **RDP Session** | 4624, 1149, 21-25, 4778, 4779 | Terminal Server | ✅ YES |
 | **Kerberos Auth** | 4768-4772 | **Domain Controller** | ❌ NO |
 | **NTLM Auth** | 4776 | **Domain Controller** | ❌ NO |
+| **NTLM Auth** | 4776 | On member servers or clients when a **local account is authenticated**. | ✅ YES |
 
 **Why ActivityID Cannot Correlate Across Machines:**
 - ActivityID is **provider-specific** and **machine-local**
