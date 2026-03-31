@@ -69,7 +69,7 @@ Pester:
   # only run tests in certain folders, or run specific test files, or can be use to
   # specify the order tests are run.
   Script:
-    - tests/Unit
+    - tests
   Tag:
   CodeCoverageThreshold: 85 # Set to 0 to bypass
   CodeCoverageOutputFile: JaCoCo_coverage.xml

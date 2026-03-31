@@ -102,7 +102,7 @@ stages:
             displayName: 'Run Unit Test'
             inputs:
               filePath: './build.ps1'
-              arguments: "-Tasks test -PesterScript 'tests/Unit'"
+              arguments: "-Tasks test -PesterScript 'tests'"
               pwsh: true
           - task: PublishTestResults@2
             displayName: 'Publish Test Results'
