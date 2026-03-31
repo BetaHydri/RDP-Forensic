@@ -5,6 +5,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.1] - 2026-03-31
+
 ### Changed
 
 - Increased code coverage from ~26% to ~74% with comprehensive mock-based
