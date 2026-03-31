@@ -170,12 +170,10 @@ stages:
               buildType: "current"
               artifactName: "$(testArtifactName)_PS7"
               targetPath: "$(Build.SourcesDirectory)/$(buildFolderName)/$(testResultFolderName)"
-          - task: PublishCodeCoverageResults@1
+          - task: PublishCodeCoverageResults@2
             displayName: "Publish Code Coverage to Azure DevOps"
             inputs:
-              codeCoverageTool: "JaCoCo"
               summaryFileLocation: "$(Build.SourcesDirectory)/$(buildFolderName)/$(testResultFolderName)/JaCoCo_coverage.xml"
-              pathToSources: "$(Build.SourcesDirectory)/$(sourceFolderName)/"
           - script: |
               bash <(curl -s https://codecov.io/bash) -f "./$(buildFolderName)/$(testResultFolderName)/JaCoCo_coverage.xml"
             displayName: "Publish Code Coverage to Codecov.io"
