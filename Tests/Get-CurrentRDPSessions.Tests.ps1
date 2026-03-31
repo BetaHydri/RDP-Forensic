@@ -18,34 +18,35 @@ BeforeAll {
 
     # Import the built module
     $builtModule = Get-ChildItem -Path (Join-Path (Join-Path (Join-Path $script:ProjectRoot 'output') 'module') 'RDP-Forensic') -Filter 'RDP-Forensic.psd1' -Recurse | Select-Object -First 1
-    if ($builtModule) {
+    if ($builtModule)
+    {
         Import-Module $builtModule.FullName -Force
     }
 }
 
 Describe "Get-CurrentRDPSessions.ps1 - Script Validation" {
-    
+
     Context "Script File Existence and Syntax" {
         It "Script file should exist" {
             $script:ScriptPath | Should -Exist
         }
-        
+
         It "Script should have valid PowerShell syntax" {
             $errors = $null
             $null = [System.Management.Automation.PSParser]::Tokenize(
-                (Get-Content -Path $script:ScriptPath -Raw), 
+                (Get-Content -Path $script:ScriptPath -Raw),
                 [ref]$errors
             )
             $errors.Count | Should -Be 0
         }
-        
+
         It "Script should contain help documentation" {
             $content = Get-Content -Path $script:ScriptPath -Raw
             $content | Should -Match '\.SYNOPSIS'
             $content | Should -Match '\.DESCRIPTION'
         }
     }
-    
+
     Context "Parameter Validation" {
         It "Should accept ShowProcesses switch" {
             { Get-CurrentRDPSessions -ShowProcesses -ErrorAction Stop } | Should -Not -Throw
@@ -78,8 +79,8 @@ Describe "Get-CurrentRDPSessions.ps1 - Script Validation" {
             $defaultValue = $params['RefreshInterval'].Attributes | Where-Object { $_.GetType().Name -eq 'PSDefaultValueAttribute' }
             # Alternative: check the actual default by examining the parameter metadata
             $ast = [System.Management.Automation.Language.Parser]::ParseFile($script:ScriptPath, [ref]$null, [ref]$null)
-            $paramBlock = $ast.FindAll({ $args[0] -is [System.Management.Automation.Language.ParameterAst] }, $true) | 
-            Where-Object { $_.Name.VariablePath.UserPath -eq 'RefreshInterval' }
+            $paramBlock = $ast.FindAll({ $args[0] -is [System.Management.Automation.Language.ParameterAst] }, $true) |
+                Where-Object { $_.Name.VariablePath.UserPath -eq 'RefreshInterval' }
             $paramBlock.DefaultValue.Value | Should -Be 5
         }
 
@@ -92,17 +93,17 @@ Describe "Get-CurrentRDPSessions.ps1 - Script Validation" {
 }
 
 Describe "Get-CurrentRDPSessions.ps1 - Functionality" {
-    
+
     Context "Session Query" {
         It "Should execute qwinsta command successfully" {
             { qwinsta 2>$null } | Should -Not -Throw
         }
-        
+
         It "Should query sessions without error" {
             { Get-CurrentRDPSessions -ErrorAction Stop } | Should -Not -Throw
         }
     }
-    
+
     Context "Process Query" {
         It "Should query processes with ShowProcesses switch" {
             { Get-CurrentRDPSessions -ShowProcesses -ErrorAction Stop } | Should -Not -Throw
@@ -111,13 +112,14 @@ Describe "Get-CurrentRDPSessions.ps1 - Functionality" {
 }
 
 Describe "Get-CurrentRDPSessions.ps1 - Logging Feature" {
-    
+
     BeforeAll {
         $script:TestLogPath = Join-Path $PSScriptRoot "TestLogs"
     }
 
     AfterEach {
-        if (Test-Path $script:TestLogPath) {
+        if (Test-Path $script:TestLogPath)
+        {
             Remove-Item -Path $script:TestLogPath -Recurse -Force -ErrorAction SilentlyContinue
         }
     }
@@ -162,11 +164,12 @@ Describe "Get-CurrentRDPSessions.ps1 - Logging Feature" {
 }
 
 Describe "Get-CurrentRDPSessions.ps1 - PowerShell Filtering" {
-    
+
     Context "Pipeline Filtering Support" {
         It "Should return objects that can be filtered with Where-Object" {
             $sessions = Get-CurrentRDPSessions -ErrorAction Stop
-            if ($sessions) {
+            if ($sessions)
+            {
                 # Test that results are objects with properties
                 $sessions[0].PSObject.Properties.Name | Should -Contain 'ID'
                 $sessions[0].PSObject.Properties.Name | Should -Contain 'Username'
