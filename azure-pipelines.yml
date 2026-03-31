@@ -189,7 +189,7 @@ stages:
           eq(variables['Build.SourceBranch'], 'refs/heads/main'),
           startsWith(variables['Build.SourceBranch'], 'refs/tags/')
         ),
-        contains(variables['System.TeamFoundationCollectionUri'], 'personal')
+        contains(variables['System.TeamFoundationCollectionUri'], 'fam-tiedemann')
       )
     jobs:
       - job: Deploy_Module
