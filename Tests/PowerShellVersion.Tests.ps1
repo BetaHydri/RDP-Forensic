@@ -17,7 +17,7 @@ BeforeAll {
     $script:RootPath = Split-Path -Parent $PSScriptRoot
     $script:MainScript = Join-Path $script:RootPath 'source' 'Public' 'Get-RDPForensics.ps1'
     $script:SessionScript = Join-Path $script:RootPath 'source' 'Public' 'Get-CurrentRDPSessions.ps1'
-    $builtModule = Get-ChildItem -Path (Join-Path $script:RootPath 'output' 'module' 'RDP-Forensic') -Filter 'RDP-Forensic.psd1' -Recurse | Select-Object -First 1
+    $builtModule = Get-ChildItem -Path (Join-Path (Join-Path (Join-Path $script:RootPath 'output') 'module') 'RDP-Forensic') -Filter 'RDP-Forensic.psd1' -Recurse | Select-Object -First 1
     if ($builtModule) {
         Import-Module $builtModule.FullName -Force
         $script:ModulePath = Split-Path $builtModule.FullName

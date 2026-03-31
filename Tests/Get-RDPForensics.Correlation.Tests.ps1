@@ -2,7 +2,7 @@ BeforeAll {
     # Import the built module
     $script:ProjectRoot = Split-Path -Parent $PSScriptRoot
     $ModulePath = Join-Path $script:ProjectRoot 'source' 'Public'
-    $builtModule = Get-ChildItem -Path (Join-Path $script:ProjectRoot 'output' 'module' 'RDP-Forensic') -Filter 'RDP-Forensic.psd1' -Recurse | Select-Object -First 1
+    $builtModule = Get-ChildItem -Path (Join-Path (Join-Path (Join-Path $script:ProjectRoot 'output') 'module') 'RDP-Forensic') -Filter 'RDP-Forensic.psd1' -Recurse | Select-Object -First 1
     if ($builtModule) {
         Import-Module $builtModule.FullName -Force
     }
@@ -232,7 +232,7 @@ Describe "Get-RDPForensics Session Correlation Tests" {
         }
         
         It "Module manifest should be valid" {
-            $builtManifest = Get-ChildItem -Path (Join-Path $script:ProjectRoot 'output' 'module' 'RDP-Forensic') -Filter 'RDP-Forensic.psd1' -Recurse | Select-Object -First 1
+            $builtManifest = Get-ChildItem -Path (Join-Path (Join-Path (Join-Path $script:ProjectRoot 'output') 'module') 'RDP-Forensic') -Filter 'RDP-Forensic.psd1' -Recurse | Select-Object -First 1
             $manifest = Test-ModuleManifest $builtManifest.FullName -ErrorAction SilentlyContinue
             $manifest | Should -Not -BeNullOrEmpty
         }

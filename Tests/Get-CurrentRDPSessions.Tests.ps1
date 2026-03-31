@@ -17,7 +17,7 @@ BeforeAll {
     $script:ScriptPath = Join-Path $script:ProjectRoot 'source' 'Public' 'Get-CurrentRDPSessions.ps1'
 
     # Import the built module
-    $builtModule = Get-ChildItem -Path (Join-Path $script:ProjectRoot 'output' 'module' 'RDP-Forensic') -Filter 'RDP-Forensic.psd1' -Recurse | Select-Object -First 1
+    $builtModule = Get-ChildItem -Path (Join-Path (Join-Path (Join-Path $script:ProjectRoot 'output') 'module') 'RDP-Forensic') -Filter 'RDP-Forensic.psd1' -Recurse | Select-Object -First 1
     if ($builtModule) {
         Import-Module $builtModule.FullName -Force
     }

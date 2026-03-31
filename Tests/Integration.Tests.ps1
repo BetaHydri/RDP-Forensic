@@ -14,7 +14,7 @@
 
 BeforeAll {
     $script:RootPath = Split-Path -Parent $PSScriptRoot
-    $builtModule = Get-ChildItem -Path (Join-Path $script:RootPath 'output' 'module' 'RDP-Forensic') -Filter 'RDP-Forensic.psd1' -Recurse | Select-Object -First 1
+    $builtModule = Get-ChildItem -Path (Join-Path (Join-Path (Join-Path $script:RootPath 'output') 'module') 'RDP-Forensic') -Filter 'RDP-Forensic.psd1' -Recurse | Select-Object -First 1
     if ($builtModule) {
         Import-Module $builtModule.FullName -Force
     }
@@ -144,31 +144,22 @@ Describe "Integration - Performance Under Load" {
 
 Describe "Integration - Module Loading" {
     
-    Context "PSM1 Module File" {
-        BeforeAll {
-            $script:ModulePath = Join-Path $script:RootPath "RDP-Forensic.psm1"
-        }
-        
-        It "Module file should exist" {
-            $script:ModulePath | Should -Exist
+    Context "Built Module" {
+        It "Built module manifest should exist" {
+            $builtManifest = Get-ChildItem -Path (Join-Path (Join-Path (Join-Path $script:RootPath 'output') 'module') 'RDP-Forensic') -Filter 'RDP-Forensic.psd1' -Recurse | Select-Object -First 1
+            $builtManifest | Should -Not -BeNullOrEmpty
         }
         
         It "Module should import without errors" {
-            { Import-Module $script:ModulePath -Force -ErrorAction Stop } | Should -Not -Throw
+            { Import-Module RDP-Forensic -Force -ErrorAction Stop } | Should -Not -Throw
         }
         
         It "Module should export Get-RDPForensics function" {
-            Import-Module $script:ModulePath -Force
-            Get-Command Get-RDPForensics -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
+            Get-Command Get-RDPForensics -Module RDP-Forensic -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
         }
         
         It "Module should export Get-CurrentRDPSessions function" {
-            Import-Module $script:ModulePath -Force
-            Get-Command Get-CurrentRDPSessions -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
-        }
-        
-        AfterAll {
-            Remove-Module RDP-Forensic -ErrorAction SilentlyContinue
+            Get-Command Get-CurrentRDPSessions -Module RDP-Forensic -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
         }
     }
 }
