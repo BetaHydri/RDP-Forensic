@@ -30,16 +30,8 @@ BuildWorkflow:
     - Build_Module_ModuleBuilder
     - Create_changelog_release_output
 
-  docs:
-    - Generate_Conceptual_Help
-    - Generate_Wiki_Content
-    - Generate_Wiki_Sidebar
-    - Clean_Markdown_Metadata
-    - Package_Wiki_Content
-
   pack:
     - build
-    - docs
     - package_module_nupkg
 
   hqrmtest:
@@ -61,9 +53,7 @@ BuildWorkflow:
   #- Merge_CodeCoverage_Files
 
   publish:
-    - Publish_Release_To_GitHub # Runs first, if token is expired it will fail early
-    - Publish_GitHub_Wiki_Content
-
+    - Publish_Release_To_GitHub
     - publish_module_to_gallery
 
 ####################################################
