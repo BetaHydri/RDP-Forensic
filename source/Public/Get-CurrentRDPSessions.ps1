@@ -1,5 +1,3 @@
-#Requires -RunAsAdministrator
-
 function Get-CurrentRDPSessions {
     <#
 .SYNOPSIS
@@ -55,7 +53,7 @@ function Get-CurrentRDPSessions {
     Author: Jan Tiedemann
     Version: 1.0.8
     Requires: Administrator privileges
-    
+
     Changelog v1.0.8:
     - Added Win32 API (WTS) integration for extended session properties
     - New properties: IdleTime, ClientIPAddress, ClientName, EncryptionLevel
@@ -90,7 +88,7 @@ function Get-CurrentRDPSessions {
         Add-Type -TypeDefinition @"
         using System;
         using System.Runtime.InteropServices;
-    
+
     public enum WTS_CONNECTSTATE_CLASS
     {
         WTSActive,
@@ -104,7 +102,7 @@ function Get-CurrentRDPSessions {
         WTSDown,
         WTSInit
     }
-    
+
     public enum WTS_INFO_CLASS
     {
         WTSInitialProgram,
@@ -138,7 +136,7 @@ function Get-CurrentRDPSessions {
         WTSSessionAddressV4,
         WTSIsRemoteSession
     }
-    
+
     [StructLayout(LayoutKind.Sequential)]
     public struct WTS_SESSION_INFO
     {
@@ -146,7 +144,7 @@ function Get-CurrentRDPSessions {
         public IntPtr pWinStationName;
         public WTS_CONNECTSTATE_CLASS State;
     }
-    
+
     [StructLayout(LayoutKind.Sequential)]
     public struct WTS_CLIENT_ADDRESS
     {
@@ -154,7 +152,7 @@ function Get-CurrentRDPSessions {
         [MarshalAs(UnmanagedType.ByValArray, SizeConst = 20)]
         public byte[] Address;
     }
-    
+
     [StructLayout(LayoutKind.Sequential)]
     public struct WTS_CLIENT_DISPLAY
     {
@@ -162,7 +160,7 @@ function Get-CurrentRDPSessions {
         public int VerticalResolution;
         public int ColorDepth;
     }
-    
+
     public class WTSApi
     {
         [DllImport("wtsapi32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
@@ -172,7 +170,7 @@ function Get-CurrentRDPSessions {
             int Version,
             out IntPtr ppSessionInfo,
             out int pCount);
-        
+
         [DllImport("wtsapi32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
         public static extern bool WTSQuerySessionInformation(
             IntPtr hServer,
@@ -180,10 +178,10 @@ function Get-CurrentRDPSessions {
             WTS_INFO_CLASS wtsInfoClass,
             out IntPtr ppBuffer,
             out int pBytesReturned);
-        
+
         [DllImport("wtsapi32.dll")]
         public static extern void WTSFreeMemory(IntPtr pMemory);
-        
+
         public static readonly IntPtr WTS_CURRENT_SERVER_HANDLE = IntPtr.Zero;
     }
 "@
@@ -222,10 +220,10 @@ function Get-CurrentRDPSessions {
             [int]$SessionId,
             [WTS_INFO_CLASS]$InfoClass
         )
-        
+
         $buffer = [IntPtr]::Zero
         $bytesReturned = 0
-        
+
         try {
             $result = [WTSApi]::WTSQuerySessionInformation(
                 [WTSApi]::WTS_CURRENT_SERVER_HANDLE,
@@ -234,7 +232,7 @@ function Get-CurrentRDPSessions {
                 [ref]$buffer,
                 [ref]$bytesReturned
             )
-            
+
             if ($result -and $buffer -ne [IntPtr]::Zero) {
                 switch ($InfoClass) {
                     ([WTS_INFO_CLASS]::WTSClientAddress) {
@@ -285,20 +283,20 @@ function Get-CurrentRDPSessions {
     # Initialize logging if LogPath is specified
     $logFile = $null
     $previousSessions = @{}
-    
+
     if ($LogPath) {
         # Create log directory if it doesn't exist
         if (-not (Test-Path $LogPath)) {
             New-Item -Path $LogPath -ItemType Directory -Force | Out-Null
         }
-        
+
         # Create timestamped log file
         $timestamp = Get-Date -Format 'yyyyMMdd_HHmmss'
         $logFile = Join-Path $LogPath "RDP_SessionMonitor_$timestamp.csv"
-        
+
         # Write CSV header with extended properties
         "Timestamp,EventType,SessionName,Username,SessionID,State,ClientIP,ClientName,ConnectTime,ClientBuild,IdleTime,Details" | Out-File -FilePath $logFile -Encoding UTF8
-        
+
         Write-Host "$(Get-Emoji 'chart') Logging enabled: " -ForegroundColor Cyan -NoNewline
         Write-Host "$logFile" -ForegroundColor Green
         Write-Host ""
@@ -324,7 +322,7 @@ function Get-CurrentRDPSessions {
         Write-Host "$env:COMPUTERNAME" -ForegroundColor White
         Write-Host "$(Get-Emoji 'clock') Time: " -ForegroundColor Cyan -NoNewline
         Write-Host "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')" -ForegroundColor White
-        
+
         if ($Watch) {
             Write-Host "$(Get-Emoji 'check') Mode: " -ForegroundColor Cyan -NoNewline
             Write-Host "Auto-Refresh (${RefreshInterval}s) - Press Ctrl+C to exit" -ForegroundColor Yellow
@@ -334,18 +332,18 @@ function Get-CurrentRDPSessions {
         # Get current sessions using qwinsta (reliable) + WTS API for extended properties
         try {
             $sessions = qwinsta 2>$null
-    
+
             if ($sessions) {
                 # Parse qwinsta output
                 $sessionObjects = @()
-        
+
                 foreach ($line in $sessions | Select-Object -Skip 1) {
                     if ($line -match '^\s*>?\s*(\S+)\s+(\S+|\s+)\s+(\d+)\s+(\S+)') {
                         $sessionName = $matches[1].Trim()
                         $username = $matches[2].Trim()
                         $id = [int]$matches[3].Trim()
                         $state = $matches[4].Trim()
-                
+
                         # Only include active/disconnected RDP sessions
                         # Exclude: console (local), services (system), Listen states (RDP listeners)
                         # Include: rdp-tcp#X sessions with Active/Disc/Conn states
@@ -364,15 +362,15 @@ function Get-CurrentRDPSessions {
                             $clientDisplay = Get-WTSSessionInfo -SessionId $id -InfoClass ([WTS_INFO_CLASS]::WTSClientDisplay)
                             $idleTime = Get-WTSSessionInfo -SessionId $id -InfoClass ([WTS_INFO_CLASS]::WTSIdleTime)
                             $wtsConnectTime = Get-WTSSessionInfo -SessionId $id -InfoClass ([WTS_INFO_CLASS]::WTSLogonTime)
-                            
+
                             # Always check Event Log for most accurate connection time
                             # WTS API may return stale data for new sessions after logoff/logon
                             $eventLogConnectTime = $null
-                            
+
                             if ($username -and $username -ne '') {
                                 # Collect all potential connection events and use the most recent one
                                 $candidateEvents = @()
-                                
+
                                 # Check Security Event 4778 (reconnection)
                                 $reconnectEvent = Get-WinEvent -FilterHashtable @{
                                     LogName = 'Security'
@@ -380,11 +378,11 @@ function Get-CurrentRDPSessions {
                                 } -MaxEvents 50 -ErrorAction SilentlyContinue | Where-Object {
                                     $_.Message -match [regex]::Escape($username)
                                 } | Select-Object -First 1
-                                
+
                                 if ($reconnectEvent) {
                                     $candidateEvents += $reconnectEvent
                                 }
-                                
+
                                 # Check Terminal Services Event 25 (reconnection)
                                 $tsReconnect = Get-WinEvent -FilterHashtable @{
                                     LogName = 'Microsoft-Windows-TerminalServices-LocalSessionManager/Operational'
@@ -393,25 +391,25 @@ function Get-CurrentRDPSessions {
                                     $_.Message -match [regex]::Escape($username) -and
                                     $_.Properties[0].Value -eq $id  # Session ID
                                 } | Select-Object -First 1
-                                
+
                                 if ($tsReconnect) {
                                     $candidateEvents += $tsReconnect
                                 }
-                                
+
                                 # Check Security Event 4624 (initial logon)
                                 $logonEvent = Get-WinEvent -FilterHashtable @{
                                     LogName = 'Security'
                                     Id      = 4624
                                 } -MaxEvents 100 -ErrorAction SilentlyContinue | Where-Object {
-                                    $_.Message -match [regex]::Escape($username) -and 
+                                    $_.Message -match [regex]::Escape($username) -and
                                     $_.Message -match 'Logon Type:\s+(10|7)\s' -and
                                     ($clientIP -and $_.Message -match [regex]::Escape($clientIP))
                                 } | Select-Object -First 1
-                                
+
                                 if ($logonEvent) {
                                     $candidateEvents += $logonEvent
                                 }
-                                
+
                                 # Check Terminal Services Event 21 (session logon) or 22 (shell start)
                                 $tsLogon = Get-WinEvent -FilterHashtable @{
                                     LogName = 'Microsoft-Windows-TerminalServices-LocalSessionManager/Operational'
@@ -420,18 +418,18 @@ function Get-CurrentRDPSessions {
                                     $_.Message -match [regex]::Escape($username) -and
                                     $_.Properties[0].Value -eq $id  # Session ID
                                 } | Select-Object -First 1
-                                
+
                                 if ($tsLogon) {
                                     $candidateEvents += $tsLogon
                                 }
-                                
+
                                 # Use the most recent event from all candidates
                                 if ($candidateEvents.Count -gt 0) {
                                     $mostRecentEvent = $candidateEvents | Sort-Object TimeCreated -Descending | Select-Object -First 1
                                     $eventLogConnectTime = $mostRecentEvent.TimeCreated
                                 }
                             }
-                            
+
                             # Use the most recent time between WTS API and Event Log
                             # This handles cases where WTS returns stale data
                             $connectTime = if ($eventLogConnectTime -and $wtsConnectTime) {
@@ -450,7 +448,7 @@ function Get-CurrentRDPSessions {
                                 # No time available
                                 $null
                             }
-                            
+
                             # Calculate idle time in readable format
                             $idleTimeDisplay = if ($idleTime -ne $null -and $idleTime -ge 0) {
                                 $idleMinutes = [Math]::Floor($idleTime / 60000)
@@ -459,7 +457,7 @@ function Get-CurrentRDPSessions {
                                 else { "$([Math]::Floor($idleMinutes / 60))h $($idleMinutes % 60)m" }
                             }
                             else { "N/A" }
-                            
+
                             $sessionObjects += [PSCustomObject]@{
                                 SessionName   = $sessionName
                                 Username      = if ($username -and $username -ne '') { $username } else { 'N/A' }
@@ -477,15 +475,15 @@ function Get-CurrentRDPSessions {
                     }
                 }
             }
-        
+
             # Log changes if logging is enabled
             if ($logFile -and $iterationCount -gt 0) {
                 $currentSessionKeys = @{}
-                
+
                 foreach ($session in $sessionObjects) {
                     $key = "$($session.SessionName)-$($session.ID)"
                     $currentSessionKeys[$key] = $session
-                    
+
                     # Check for new sessions or state changes
                     if (-not $previousSessions.ContainsKey($key)) {
                         # New session detected
@@ -502,7 +500,7 @@ function Get-CurrentRDPSessions {
                         Write-Host "  [LOG] State change: $($session.Username) - $($previousSessions[$key].State) -> $($session.State)" -ForegroundColor Yellow
                     }
                 }
-                
+
                 # Check for disconnected/removed sessions
                 foreach ($key in $previousSessions.Keys) {
                     if (-not $currentSessionKeys.ContainsKey($key)) {
@@ -513,7 +511,7 @@ function Get-CurrentRDPSessions {
                         Write-Host "  [LOG] Session ended: $($oldSession.Username) from $($oldSession.ClientIP) (ID: $($oldSession.ID))" -ForegroundColor Red
                     }
                 }
-                
+
                 # Update previous sessions tracking
                 $previousSessions = $currentSessionKeys
             }
@@ -527,7 +525,7 @@ function Get-CurrentRDPSessions {
                     $logEntry | Out-File -FilePath $logFile -Append -Encoding UTF8
                 }
             }
-        
+
             if ($sessionObjects.Count -gt 0) {
                 Write-Host "`n" -NoNewline
                 Write-Host ("-" * 80) -ForegroundColor DarkGreen
@@ -535,10 +533,10 @@ function Get-CurrentRDPSessions {
                 Write-Host "$($sessionObjects.Count)" -ForegroundColor White -NoNewline
                 Write-Host ")" -ForegroundColor Yellow
                 Write-Host ("-" * 80) -ForegroundColor DarkGreen
-                    
+
                 # Display sessions with extended properties
                 $sessionObjects | Select-Object SessionName, Username, ID, State, ClientIP, ClientName, ConnectTime, IdleTime, ClientBuild, ClientDisplay | Format-Table -AutoSize
-            
+
                 # Show processes for all sessions if requested
                 if ($ShowProcesses) {
                     foreach ($session in $sessionObjects) {
@@ -546,7 +544,7 @@ function Get-CurrentRDPSessions {
                         Write-Host "$($session.ID)" -ForegroundColor White -NoNewline
                         Write-Host " - User: " -ForegroundColor Yellow -NoNewline
                         Write-Host "$($session.Username)" -ForegroundColor Cyan
-                    
+
                         try {
                             $processes = qprocess /id:$($session.ID) 2>$null
                             if ($processes) {
@@ -563,7 +561,7 @@ function Get-CurrentRDPSessions {
                         }
                     }
                 }
-            
+
                 # Get recent logon events for active users
                 Write-Host "`n" -NoNewline
                 Write-Host ("-" * 80) -ForegroundColor DarkGreen
@@ -572,7 +570,7 @@ function Get-CurrentRDPSessions {
                 foreach ($session in $sessionObjects | Where-Object { $_.Username -ne 'N/A' }) {
                     # Collect all potential connection events and use the most recent one (same logic as ConnectTime)
                     $candidateEvents = @()
-                    
+
                     # Check Security Event 4778 (reconnection)
                     $reconnectEvent = Get-WinEvent -FilterHashtable @{
                         LogName = 'Security'
@@ -580,11 +578,11 @@ function Get-CurrentRDPSessions {
                     } -MaxEvents 50 -ErrorAction SilentlyContinue | Where-Object {
                         $_.Message -match [regex]::Escape($session.Username)
                     } | Select-Object -First 1
-                    
+
                     if ($reconnectEvent) {
                         $candidateEvents += $reconnectEvent
                     }
-                    
+
                     # Check Terminal Services Event 25 (reconnection)
                     $tsReconnect = Get-WinEvent -FilterHashtable @{
                         LogName = 'Microsoft-Windows-TerminalServices-LocalSessionManager/Operational'
@@ -593,25 +591,25 @@ function Get-CurrentRDPSessions {
                         $_.Message -match [regex]::Escape($session.Username) -and
                         $_.Properties[0].Value -eq $session.ID  # Session ID
                     } | Select-Object -First 1
-                    
+
                     if ($tsReconnect) {
                         $candidateEvents += $tsReconnect
                     }
-                    
+
                     # Check Security Event 4624 (initial logon)
                     $logonEvent = Get-WinEvent -FilterHashtable @{
                         LogName = 'Security'
                         Id      = 4624
                     } -MaxEvents 100 -ErrorAction SilentlyContinue | Where-Object {
-                        $_.Message -match [regex]::Escape($session.Username) -and 
+                        $_.Message -match [regex]::Escape($session.Username) -and
                         $_.Message -match 'Logon Type:\s+(10|7)\s' -and
                         ($session.ClientIP -and $_.Message -match [regex]::Escape($session.ClientIP))
                     } | Select-Object -First 1
-                    
+
                     if ($logonEvent) {
                         $candidateEvents += $logonEvent
                     }
-                    
+
                     # Check Terminal Services Event 21 (session logon) or 22 (shell start)
                     $tsLogon = Get-WinEvent -FilterHashtable @{
                         LogName = 'Microsoft-Windows-TerminalServices-LocalSessionManager/Operational'
@@ -620,22 +618,22 @@ function Get-CurrentRDPSessions {
                         $_.Message -match [regex]::Escape($session.Username) -and
                         $_.Properties[0].Value -eq $session.ID  # Session ID
                     } | Select-Object -First 1
-                    
+
                     if ($tsLogon) {
                         $candidateEvents += $tsLogon
                     }
-                    
+
                     # Use the most recent event from all candidates
                     if ($candidateEvents.Count -gt 0) {
                         $recentActivity = $candidateEvents | Sort-Object TimeCreated -Descending | Select-Object -First 1
-                        
-                        $sourceIP = if ($recentActivity.Message -match '(Source Network Address|Client Address):\s+([^\r\n]+)') { 
-                            $matches[2].Trim() 
+
+                        $sourceIP = if ($recentActivity.Message -match '(Source Network Address|Client Address):\s+([^\r\n]+)') {
+                            $matches[2].Trim()
                         }
-                        else { 
-                            'N/A' 
+                        else {
+                            'N/A'
                         }
-                        
+
                         $activityType = switch ($recentActivity.Id) {
                             4778 { "Last activity (reconnect)" }
                             4624 { "Last logon" }
@@ -643,7 +641,7 @@ function Get-CurrentRDPSessions {
                             { $_ -in 21, 22 } { "Last session activity" }
                             default { "Last activity" }
                         }
-                    
+
                         Write-Host "  $(Get-Emoji 'check') " -ForegroundColor Green -NoNewline
                         Write-Host "$($session.Username)" -ForegroundColor Cyan -NoNewline
                         Write-Host " - $activityType" -ForegroundColor Gray -NoNewline
@@ -674,4 +672,3 @@ function Get-CurrentRDPSessions {
         }
     }
 }
-

@@ -1,0 +1,24 @@
+TOPIC
+    about_RDP-Forensic
+
+SHORT DESCRIPTION
+    A comprehensive PowerShell toolkit for RDP forensics analysis, tracking connection attempts, authentication, sessions, and logoffs across Windows Event Logs for security monitoring and incident response.
+
+LONG DESCRIPTION
+    A comprehensive PowerShell toolkit for RDP forensics analysis, tracking connection attempts, authentication, sessions, and logoffs across Windows Event Logs for security monitoring and incident response.
+
+EXAMPLES
+    PS C:\> {{ add examples here }}
+
+NOTE:
+    Thank you to all those who contributed to this module, by writing code, sharing opinions, and provided feedback.
+
+TROUBLESHOOTING NOTE:
+    Look out on the Github repository for issues and new releases.
+
+SEE ALSO
+    - {{ Please add Project URI such as github }}}
+
+KEYWORDS
+    {{ Add comma separated keywords here }}
+
