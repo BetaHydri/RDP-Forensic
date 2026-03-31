@@ -1,4 +1,5 @@
-function Get-RDPForensics {
+function Get-RDPForensics
+{
     <#
 .SYNOPSIS
     Comprehensive RDP forensics analysis tool for Windows systems.
@@ -109,7 +110,6 @@ function Get-RDPForensics {
 
 .NOTES
     Author: Jan Tiedemann
-    Version: 1.0.8
     Based on: https://woshub.com/rdp-connection-logs-forensics-windows/
     Requires: Administrator privileges to read Security event logs
 #>
@@ -151,9 +151,11 @@ function Get-RDPForensics {
     $ErrorActionPreference = 'Continue'
 
     # Emoji support for both PowerShell 5.1 and 7.x
-    function Get-Emoji {
+    function Get-Emoji
+    {
         param([string]$Name)
-        if ($PSVersionTable.PSVersion.Major -ge 6) {
+        if ($PSVersionTable.PSVersion.Major -ge 6)
+        {
             $emojis = @{
                 'shield'   = [char]::ConvertFromUtf32(0x1F6E1) + [char]::ConvertFromUtf32(0xFE0F)
                 'magnify'  = [char]::ConvertFromUtf32(0x1F50D)
@@ -169,7 +171,8 @@ function Get-RDPForensics {
                 'rocket'   = [char]::ConvertFromUtf32(0x1F680)
             }
         }
-        else {
+        else
+        {
             # PowerShell 5.1 - Use Unicode symbols that work in Windows Console
             $emojis = @{
                 'shield'   = "$([char]0x25A0)"  # Black square
@@ -190,32 +193,38 @@ function Get-RDPForensics {
     }
 
     # Function to correlate events across log sources using LogonID and SessionID
-    function Get-CorrelatedSessions {
+    function Get-CorrelatedSessions
+    {
         param([array]$Events)
 
         # Group events by LogonID (priority 1) or SessionID (priority 2)
         # Secondary correlation then merges SessionID sessions into LogonID sessions (same user + time proximity)
         $sessionMap = @{}
 
-        foreach ($event in $Events) {
+        foreach ($event in $Events)
+        {
             # Determine correlation key with priority: LogonID > SessionID (ActivityID kept for reference only)
             $correlationKey = $null
 
             # Priority 1: Use LogonID from Security log events (best cross-log correlation)
             # Exception: Event 4648 uses SubjectLogonID (not the session LogonID) - skip direct correlation
-            if ($event.EventID -ne 4648 -and $event.LogonID -and $event.LogonID -ne 'N/A' -and $event.LogonID -ne $null) {
+            if ($event.EventID -ne 4648 -and $event.LogonID -and $event.LogonID -ne 'N/A' -and $event.LogonID -ne $null)
+            {
                 $correlationKey = "LogonID:$($event.LogonID)"
             }
             # Priority 2: Use SessionID from TerminalServices events
-            elseif ($event.SessionID -and $event.SessionID -ne 'N/A' -and $event.SessionID -ne $null) {
+            elseif ($event.SessionID -and $event.SessionID -ne 'N/A' -and $event.SessionID -ne $null)
+            {
                 $correlationKey = "SessionID:$($event.SessionID)"
             }
             # Note: ActivityID is preserved in events for forensic analysis but not used for correlation
             # as it's provider-specific and doesn't reliably match across Security/TerminalServices logs
             # Note: Event 4648 uses time-based correlation instead (SubjectLogonID ≠ session LogonID)
 
-            if ($correlationKey) {
-                if (-not $sessionMap.ContainsKey($correlationKey)) {
+            if ($correlationKey)
+            {
+                if (-not $sessionMap.ContainsKey($correlationKey))
+                {
                     $sessionMap[$correlationKey] = @{
                         CorrelationKey = $correlationKey
                         Events         = @()
@@ -242,32 +251,56 @@ function Get-RDPForensics {
                 $sessionMap[$correlationKey].Events += $event
 
                 # Update correlation IDs if not yet set (for sessions grouped by different keys)
-                if (-not $sessionMap[$correlationKey].ActivityID -and $event.ActivityID) {
+                if (-not $sessionMap[$correlationKey].ActivityID -and $event.ActivityID)
+                {
                     $sessionMap[$correlationKey].ActivityID = $event.ActivityID
                 }
-                if (-not $sessionMap[$correlationKey].LogonID -and $event.LogonID -and $event.LogonID -ne 'N/A') {
+                if (-not $sessionMap[$correlationKey].LogonID -and $event.LogonID -and $event.LogonID -ne 'N/A')
+                {
                     $sessionMap[$correlationKey].LogonID = $event.LogonID
                 }
-                if (-not $sessionMap[$correlationKey].SessionID -and $event.SessionID -and $event.SessionID -ne 'N/A') {
+                if (-not $sessionMap[$correlationKey].SessionID -and $event.SessionID -and $event.SessionID -ne 'N/A')
+                {
                     $sessionMap[$correlationKey].SessionID = $event.SessionID
                 }
 
                 # Track lifecycle stages
                 # Note: Event 4648 excluded from direct correlation - uses time-based correlation instead
-                switch ($event.EventID) {
-                    1149 { $sessionMap[$correlationKey].Lifecycle.ConnectionAttempt = $true }
-                    { $_ -in 4624, 4776 } { $sessionMap[$correlationKey].Lifecycle.Authentication = $true }
-                    { $_ -in 21, 22 } { $sessionMap[$correlationKey].Lifecycle.Logon = $true }
-                    { $_ -in 24, 25, 4778, 4801 } { $sessionMap[$correlationKey].Lifecycle.Active = $true }
-                    { $_ -in 39, 40, 4779, 4800 } { $sessionMap[$correlationKey].Lifecycle.Disconnect = $true }
-                    { $_ -in 23, 4634, 4647, 9009 } { $sessionMap[$correlationKey].Lifecycle.Logoff = $true }
+                switch ($event.EventID)
+                {
+                    1149
+                    {
+                        $sessionMap[$correlationKey].Lifecycle.ConnectionAttempt = $true 
+                    }
+                    { $_ -in 4624, 4776 }
+                    {
+                        $sessionMap[$correlationKey].Lifecycle.Authentication = $true 
+                    }
+                    { $_ -in 21, 22 }
+                    {
+                        $sessionMap[$correlationKey].Lifecycle.Logon = $true 
+                    }
+                    { $_ -in 24, 25, 4778, 4801 }
+                    {
+                        $sessionMap[$correlationKey].Lifecycle.Active = $true 
+                    }
+                    { $_ -in 39, 40, 4779, 4800 }
+                    {
+                        $sessionMap[$correlationKey].Lifecycle.Disconnect = $true 
+                    }
+                    { $_ -in 23, 4634, 4647, 9009 }
+                    {
+                        $sessionMap[$correlationKey].Lifecycle.Logoff = $true 
+                    }
                 }
 
                 # Update session metadata
-                if ($event.User -and $event.User -ne 'N/A') {
+                if ($event.User -and $event.User -ne 'N/A')
+                {
                     $sessionMap[$correlationKey].User = $event.User
                 }
-                if ($event.SourceIP -and $event.SourceIP -ne 'N/A' -and $event.SourceIP -ne '-' -and $event.SourceIP -ne 'LOCAL') {
+                if ($event.SourceIP -and $event.SourceIP -ne 'N/A' -and $event.SourceIP -ne '-' -and $event.SourceIP -ne 'LOCAL')
+                {
                     $sessionMap[$correlationKey].SourceIP = $event.SourceIP
                 }
             }
@@ -286,24 +319,29 @@ function Get-RDPForensics {
 
         $correlatedPreAuthEventIDs = @()  # Track which pre-auth events matched RDP sessions
 
-        foreach ($preAuthEvent in $preAuthEvents) {
+        foreach ($preAuthEvent in $preAuthEvents)
+        {
             $matchedSession = $null
             $closestTimeDiff = [TimeSpan]::MaxValue
 
             # Find the closest RDP session that starts within 10 seconds after this pre-auth event
-            foreach ($sessionKey in $sessionMap.Keys) {
+            foreach ($sessionKey in $sessionMap.Keys)
+            {
                 $session = $sessionMap[$sessionKey]
                 $matchUser = $session.User -eq $preAuthEvent.User
                 $matchIP = (-not $preAuthEvent.SourceIP -or $preAuthEvent.SourceIP -eq 'N/A' -or
                     $session.SourceIP -eq $preAuthEvent.SourceIP)
 
-                if ($matchUser -and $matchIP) {
+                if ($matchUser -and $matchIP)
+                {
                     $sessionStart = ($session.Events | Sort-Object TimeCreated | Select-Object -First 1).TimeCreated
                     $timeDiff = $sessionStart - $preAuthEvent.TimeCreated
 
                     # Pre-auth/credential events should be 0-10 seconds BEFORE session start
-                    if ($timeDiff.TotalSeconds -ge 0 -and $timeDiff.TotalSeconds -le 10) {
-                        if ($timeDiff -lt $closestTimeDiff) {
+                    if ($timeDiff.TotalSeconds -ge 0 -and $timeDiff.TotalSeconds -le 10)
+                    {
+                        if ($timeDiff -lt $closestTimeDiff)
+                        {
                             $closestTimeDiff = $timeDiff
                             $matchedSession = $sessionKey
                         }
@@ -312,7 +350,8 @@ function Get-RDPForensics {
             }
 
             # Add pre-auth event to matched RDP session
-            if ($matchedSession) {
+            if ($matchedSession)
+            {
                 $sessionMap[$matchedSession].Events += $preAuthEvent
                 $sessionMap[$matchedSession].Lifecycle.Authentication = $true
                 $correlatedPreAuthEventIDs += $preAuthEvent.GetHashCode()  # Track this event as matched
@@ -338,31 +377,38 @@ function Get-RDPForensics {
         $sessionIDSessions = @($sessionMap.Keys | Where-Object { $_ -like "SessionID:*" })
         $logonIDSessions = @($sessionMap.Keys | Where-Object { $_ -like "LogonID:*" })
 
-        foreach ($sessionIDKey in $sessionIDSessions) {
+        foreach ($sessionIDKey in $sessionIDSessions)
+        {
             $sessionIDSession = $sessionMap[$sessionIDKey]
 
             # Find matching LogonID session
             $matchedLogonIDKey = $null
             $bestMatchScore = 0  # Track number of synchronized event pairs
 
-            foreach ($logonIDKey in $logonIDSessions) {
+            foreach ($logonIDKey in $logonIDSessions)
+            {
                 $logonIDSession = $sessionMap[$logonIDKey]
 
                 # Match criteria: Same user + synchronized events
-                if ($logonIDSession.User -eq $sessionIDSession.User) {
+                if ($logonIDSession.User -eq $sessionIDSession.User)
+                {
                     # Check if this LogonID session has RDP events (4624/4778/4779)
                     $hasRDPLogonType = $logonIDSession.Events | Where-Object {
                         ($_.EventID -eq 4624 -and $_.Details -match 'RemoteInteractive|Unlock/Reconnect|Network') -or
                         ($_.EventID -in @(4778, 4779))
                     }
 
-                    if ($hasRDPLogonType) {
+                    if ($hasRDPLogonType)
+                    {
                         # Count synchronized events (events within 3 seconds of each other)
                         $synchronizedCount = 0
-                        foreach ($sessionIDEvent in $sessionIDSession.Events) {
-                            foreach ($logonIDEvent in $logonIDSession.Events) {
+                        foreach ($sessionIDEvent in $sessionIDSession.Events)
+                        {
+                            foreach ($logonIDEvent in $logonIDSession.Events)
+                            {
                                 $timeDiff = [Math]::Abs(($logonIDEvent.TimeCreated - $sessionIDEvent.TimeCreated).TotalSeconds)
-                                if ($timeDiff -le 3) {
+                                if ($timeDiff -le 3)
+                                {
                                     $synchronizedCount++
                                     break  # Only count each SessionID event once
                                 }
@@ -370,7 +416,8 @@ function Get-RDPForensics {
                         }
 
                         # If we found multiple synchronized events, this is a strong match
-                        if ($synchronizedCount -ge 2 -and $synchronizedCount -gt $bestMatchScore) {
+                        if ($synchronizedCount -ge 2 -and $synchronizedCount -gt $bestMatchScore)
+                        {
                             $bestMatchScore = $synchronizedCount
                             $matchedLogonIDKey = $logonIDKey
                         }
@@ -379,15 +426,19 @@ function Get-RDPForensics {
             }
 
             # Merge SessionID events into LogonID session
-            if ($matchedLogonIDKey) {
+            if ($matchedLogonIDKey)
+            {
                 $sessionMap[$matchedLogonIDKey].Events += $sessionIDSession.Events
                 # Update SessionID in LogonID session
-                if (-not $sessionMap[$matchedLogonIDKey].SessionID -or $sessionMap[$matchedLogonIDKey].SessionID -eq 'N/A') {
+                if (-not $sessionMap[$matchedLogonIDKey].SessionID -or $sessionMap[$matchedLogonIDKey].SessionID -eq 'N/A')
+                {
                     $sessionMap[$matchedLogonIDKey].SessionID = $sessionIDSession.SessionID
                 }
                 # Merge lifecycle flags
-                foreach ($key in $sessionIDSession.Lifecycle.Keys) {
-                    if ($sessionIDSession.Lifecycle[$key]) {
+                foreach ($key in $sessionIDSession.Lifecycle.Keys)
+                {
+                    if ($sessionIDSession.Lifecycle[$key])
+                    {
                         $sessionMap[$matchedLogonIDKey].Lifecycle[$key] = $true
                     }
                 }
@@ -397,15 +448,18 @@ function Get-RDPForensics {
         }
 
         # Calculate session durations and create session objects
-        $sessions = foreach ($key in $sessionMap.Keys) {
+        $sessions = foreach ($key in $sessionMap.Keys)
+        {
             $session = $sessionMap[$key]
             $sortedEvents = $session.Events | Sort-Object TimeCreated
 
-            if ($sortedEvents.Count -gt 0) {
+            if ($sortedEvents.Count -gt 0)
+            {
                 $session.StartTime = $sortedEvents[0].TimeCreated
                 $session.EndTime = $sortedEvents[-1].TimeCreated
 
-                if ($session.StartTime -and $session.EndTime) {
+                if ($session.StartTime -and $session.EndTime)
+                {
                     $session.Duration = $session.EndTime - $session.StartTime
                 }
             }
@@ -420,10 +474,12 @@ function Get-RDPForensics {
                 SessionID         = $session.SessionID
                 StartTime         = $session.StartTime
                 EndTime           = $session.EndTime
-                Duration          = if ($session.Duration) {
+                Duration          = if ($session.Duration)
+                {
                     "{0:hh\:mm\:ss}" -f $session.Duration
                 }
-                else {
+                else
+                {
                     'N/A'
                 }
                 EventCount        = $session.Events.Count
@@ -455,7 +511,7 @@ function Get-RDPForensics {
     $horizontal = [string][char]0x2550; $vertical = [char]0x2551
     Write-Host "$topLeft$($horizontal * 67)$topRight" -ForegroundColor Cyan
     Write-Host "$vertical" -ForegroundColor Cyan -NoNewline
-    Write-Host "          RDP FORENSICS ANALYSIS TOOL v1.0.8                       " -ForegroundColor White -NoNewline
+    Write-Host "          RDP FORENSICS ANALYSIS TOOL                              " -ForegroundColor White -NoNewline
     Write-Host "$vertical" -ForegroundColor Cyan
     Write-Host "$vertical" -ForegroundColor Cyan -NoNewline
     Write-Host "        Security Investigation & Audit Toolkit                     " -ForegroundColor Yellow -NoNewline
@@ -469,12 +525,14 @@ function Get-RDPForensics {
     Write-Host ""
 
     # Function to parse EventID 1149 - RDP Connection Attempts
-    function Get-RDPConnectionAttempts {
+    function Get-RDPConnectionAttempts
+    {
         param([DateTime]$Start, [DateTime]$End)
 
         Write-Host "$(Get-Emoji 'rocket') [1/6] Collecting RDP Connection Attempts (EventID 1149)..." -ForegroundColor Yellow
 
-        try {
+        try
+        {
             $events = Get-WinEvent -FilterHashtable @{
                 LogName   = 'Microsoft-Windows-TerminalServices-RemoteConnectionManager/Operational'
                 Id        = 1149
@@ -482,15 +540,19 @@ function Get-RDPForensics {
                 EndTime   = $End
             } -ErrorAction SilentlyContinue
 
-            if ($events) {
+            if ($events)
+            {
                 [xml[]]$xml = $events | ForEach-Object { $_.ToXml() }
 
-                $results = foreach ($event in $xml.Event) {
+                $results = foreach ($event in $xml.Event)
+                {
                     # Extract ActivityID from Correlation element
-                    $activityID = if ($event.System.Correlation.ActivityID) {
+                    $activityID = if ($event.System.Correlation.ActivityID)
+                    {
                         $event.System.Correlation.ActivityID
                     }
-                    else {
+                    else
+                    {
                         $null
                     }
 
@@ -513,29 +575,40 @@ function Get-RDPForensics {
                 Write-Host " connection attempts" -ForegroundColor Green
                 return $results
             }
-            else {
+            else
+            {
                 Write-Host "  $(Get-Emoji 'cross') No connection attempts found" -ForegroundColor DarkGray
                 return @()
             }
         }
-        catch {
+        catch
+        {
             Write-Warning "Error collecting connection attempts: $_"
             return @()
         }
     }
 
     # Function to parse EventID 4624, 4625, 4648, 4776, 4768-4772 - Authentication Events
-    function Get-RDPAuthenticationEvents {
+    function Get-RDPAuthenticationEvents
+    {
         param(
             [DateTime]$Start,
             [DateTime]$End,
             [bool]$IncludeKerberosAndNTLM = $false
         )
 
-        $eventList = if ($IncludeKerberosAndNTLM) { "4624, 4625, 4648, 4768-4772, 4776" } else { "4624, 4625, 4648" }
+        $eventList = if ($IncludeKerberosAndNTLM)
+        {
+            "4624, 4625, 4648, 4768-4772, 4776" 
+        }
+        else
+        {
+            "4624, 4625, 4648" 
+        }
         Write-Host "$(Get-Emoji 'key') [2/7] Collecting RDP Authentication Events (EventID $eventList)..." -ForegroundColor Yellow
 
-        try {
+        try
+        {
             # Collect logon events (4624/4625) and explicit credential usage (4648)
             $logonEvents = Get-WinEvent -FilterHashtable @{
                 LogName   = 'Security'
@@ -552,7 +625,8 @@ function Get-RDPForensics {
             $kerberosEvents = @()
             $credentialEvents = @()
 
-            if ($IncludeKerberosAndNTLM) {
+            if ($IncludeKerberosAndNTLM)
+            {
                 # Kerberos authentication events (4768-4772)
                 $kerberosEvents = Get-WinEvent -FilterHashtable @{
                     LogName   = 'Security'
@@ -578,32 +652,82 @@ function Get-RDPForensics {
             # Combine all event types
             $events = @($logonEvents) + @($kerberosEvents) + @($credentialEvents)
 
-            if ($events -and $events.Count -gt 0) {
-                $results = foreach ($event in $events) {
+            if ($events -and $events.Count -gt 0)
+            {
+                $results = foreach ($event in $events)
+                {
                     $message = $event.Message
 
                     # Extract ActivityID from XML
                     [xml]$eventXml = $event.ToXml()
-                    $activityID = if ($eventXml.Event.System.Correlation.ActivityID) {
+                    $activityID = if ($eventXml.Event.System.Correlation.ActivityID)
+                    {
                         $eventXml.Event.System.Correlation.ActivityID
                     }
-                    else {
+                    else
+                    {
                         $null
                     }
 
                     # Handle different event types
-                    switch ($event.Id) {
-                        4768 {
+                    switch ($event.Id)
+                    {
+                        4768
+                        {
                             # Kerberos TGT Request
-                            $userName = if ($message -match 'Account Name:\s+([^\r\n]+)') { $matches[1].Trim() } else { 'N/A' }
-                            $userDomain = if ($message -match 'Account Domain:\s+([^\r\n]+)') { $matches[1].Trim() } else { 'N/A' }
-                            $sourceIP = if ($message -match 'Client Address:\s+::ffff:([^\r\n]+)') { $matches[1].Trim() }
-                            elseif ($message -match 'Client Address:\s+([^\r\n]+)') { $matches[1].Trim() }
-                            else { 'N/A' }
-                            $statusCode = if ($message -match 'Result Code:\s+([^\r\n]+)') { $matches[1].Trim() } else { 'N/A' }
-                            $ticketOptions = if ($message -match 'Ticket Options:\s+([^\r\n]+)') { $matches[1].Trim() } else { 'N/A' }
+                            $userName = if ($message -match 'Account Name:\s+([^\r\n]+)')
+                            {
+                                $matches[1].Trim() 
+                            }
+                            else
+                            {
+                                'N/A' 
+                            }
+                            $userDomain = if ($message -match 'Account Domain:\s+([^\r\n]+)')
+                            {
+                                $matches[1].Trim() 
+                            }
+                            else
+                            {
+                                'N/A' 
+                            }
+                            $sourceIP = if ($message -match 'Client Address:\s+::ffff:([^\r\n]+)')
+                            {
+                                $matches[1].Trim() 
+                            }
+                            elseif ($message -match 'Client Address:\s+([^\r\n]+)')
+                            {
+                                $matches[1].Trim() 
+                            }
+                            else
+                            {
+                                'N/A' 
+                            }
+                            $statusCode = if ($message -match 'Result Code:\s+([^\r\n]+)')
+                            {
+                                $matches[1].Trim() 
+                            }
+                            else
+                            {
+                                'N/A' 
+                            }
+                            $ticketOptions = if ($message -match 'Ticket Options:\s+([^\r\n]+)')
+                            {
+                                $matches[1].Trim() 
+                            }
+                            else
+                            {
+                                'N/A' 
+                            }
 
-                            $eventType = if ($statusCode -eq '0x0') { 'Kerberos TGT Success' } else { 'Kerberos TGT Failed' }
+                            $eventType = if ($statusCode -eq '0x0')
+                            {
+                                'Kerberos TGT Success' 
+                            }
+                            else
+                            {
+                                'Kerberos TGT Failed' 
+                            }
                             $details = "Result: $statusCode | Options: $ticketOptions"
 
                             [PSCustomObject]@{
@@ -619,17 +743,62 @@ function Get-RDPForensics {
                                 Details     = $details
                             }
                         }
-                        4769 {
+                        4769
+                        {
                             # Kerberos Service Ticket Request
-                            $userName = if ($message -match 'Account Name:\s+([^\r\n]+)') { $matches[1].Trim() } else { 'N/A' }
-                            $userDomain = if ($message -match 'Account Domain:\s+([^\r\n]+)') { $matches[1].Trim() } else { 'N/A' }
-                            $serviceName = if ($message -match 'Service Name:\s+([^\r\n]+)') { $matches[1].Trim() } else { 'N/A' }
-                            $sourceIP = if ($message -match 'Client Address:\s+::ffff:([^\r\n]+)') { $matches[1].Trim() }
-                            elseif ($message -match 'Client Address:\s+([^\r\n]+)') { $matches[1].Trim() }
-                            else { 'N/A' }
-                            $statusCode = if ($message -match 'Failure Code:\s+([^\r\n]+)') { $matches[1].Trim() } else { '0x0' }
+                            $userName = if ($message -match 'Account Name:\s+([^\r\n]+)')
+                            {
+                                $matches[1].Trim() 
+                            }
+                            else
+                            {
+                                'N/A' 
+                            }
+                            $userDomain = if ($message -match 'Account Domain:\s+([^\r\n]+)')
+                            {
+                                $matches[1].Trim() 
+                            }
+                            else
+                            {
+                                'N/A' 
+                            }
+                            $serviceName = if ($message -match 'Service Name:\s+([^\r\n]+)')
+                            {
+                                $matches[1].Trim() 
+                            }
+                            else
+                            {
+                                'N/A' 
+                            }
+                            $sourceIP = if ($message -match 'Client Address:\s+::ffff:([^\r\n]+)')
+                            {
+                                $matches[1].Trim() 
+                            }
+                            elseif ($message -match 'Client Address:\s+([^\r\n]+)')
+                            {
+                                $matches[1].Trim() 
+                            }
+                            else
+                            {
+                                'N/A' 
+                            }
+                            $statusCode = if ($message -match 'Failure Code:\s+([^\r\n]+)')
+                            {
+                                $matches[1].Trim() 
+                            }
+                            else
+                            {
+                                '0x0' 
+                            }
 
-                            $eventType = if ($statusCode -eq '0x0') { 'Kerberos Service Ticket Success' } else { 'Kerberos Service Ticket Failed' }
+                            $eventType = if ($statusCode -eq '0x0')
+                            {
+                                'Kerberos Service Ticket Success' 
+                            }
+                            else
+                            {
+                                'Kerberos Service Ticket Failed' 
+                            }
                             $details = "Service: $serviceName | Result: $statusCode"
 
                             [PSCustomObject]@{
@@ -645,14 +814,45 @@ function Get-RDPForensics {
                                 Details     = $details
                             }
                         }
-                        4770 {
+                        4770
+                        {
                             # Kerberos Service Ticket Renewal
-                            $userName = if ($message -match 'Account Name:\s+([^\r\n]+)') { $matches[1].Trim() } else { 'N/A' }
-                            $userDomain = if ($message -match 'Account Domain:\s+([^\r\n]+)') { $matches[1].Trim() } else { 'N/A' }
-                            $serviceName = if ($message -match 'Service Name:\s+([^\r\n]+)') { $matches[1].Trim() } else { 'N/A' }
-                            $sourceIP = if ($message -match 'Client Address:\s+::ffff:([^\r\n]+)') { $matches[1].Trim() }
-                            elseif ($message -match 'Client Address:\s+([^\r\n]+)') { $matches[1].Trim() }
-                            else { 'N/A' }
+                            $userName = if ($message -match 'Account Name:\s+([^\r\n]+)')
+                            {
+                                $matches[1].Trim() 
+                            }
+                            else
+                            {
+                                'N/A' 
+                            }
+                            $userDomain = if ($message -match 'Account Domain:\s+([^\r\n]+)')
+                            {
+                                $matches[1].Trim() 
+                            }
+                            else
+                            {
+                                'N/A' 
+                            }
+                            $serviceName = if ($message -match 'Service Name:\s+([^\r\n]+)')
+                            {
+                                $matches[1].Trim() 
+                            }
+                            else
+                            {
+                                'N/A' 
+                            }
+                            $sourceIP = if ($message -match 'Client Address:\s+::ffff:([^\r\n]+)')
+                            {
+                                $matches[1].Trim() 
+                            }
+                            elseif ($message -match 'Client Address:\s+([^\r\n]+)')
+                            {
+                                $matches[1].Trim() 
+                            }
+                            else
+                            {
+                                'N/A' 
+                            }
 
                             $eventType = 'Kerberos Ticket Renewed'
                             $details = "Service: $serviceName"
@@ -670,27 +870,85 @@ function Get-RDPForensics {
                                 Details     = $details
                             }
                         }
-                        4771 {
+                        4771
+                        {
                             # Kerberos Pre-authentication Failed (KEY EVENT - shows why Kerberos failed)
-                            $userName = if ($message -match 'Account Name:\s+([^\r\n]+)') { $matches[1].Trim() } else { 'N/A' }
-                            $userDomain = if ($message -match 'Service Name:\s+krbtgt/([^\r\n]+)') { $matches[1].Trim() }
-                            elseif ($message -match 'Account Domain:\s+([^\r\n]+)') { $matches[1].Trim() }
-                            else { 'N/A' }
-                            $sourceIP = if ($message -match 'Client Address:\s+::ffff:([^\r\n]+)') { $matches[1].Trim() }
-                            elseif ($message -match 'Client Address:\s+([^\r\n]+)') { $matches[1].Trim() }
-                            else { 'N/A' }
-                            $errorCode = if ($message -match 'Failure Code:\s+([^\r\n]+)') { $matches[1].Trim() } else { 'N/A' }
+                            $userName = if ($message -match 'Account Name:\s+([^\r\n]+)')
+                            {
+                                $matches[1].Trim() 
+                            }
+                            else
+                            {
+                                'N/A' 
+                            }
+                            $userDomain = if ($message -match 'Service Name:\s+krbtgt/([^\r\n]+)')
+                            {
+                                $matches[1].Trim() 
+                            }
+                            elseif ($message -match 'Account Domain:\s+([^\r\n]+)')
+                            {
+                                $matches[1].Trim() 
+                            }
+                            else
+                            {
+                                'N/A' 
+                            }
+                            $sourceIP = if ($message -match 'Client Address:\s+::ffff:([^\r\n]+)')
+                            {
+                                $matches[1].Trim() 
+                            }
+                            elseif ($message -match 'Client Address:\s+([^\r\n]+)')
+                            {
+                                $matches[1].Trim() 
+                            }
+                            else
+                            {
+                                'N/A' 
+                            }
+                            $errorCode = if ($message -match 'Failure Code:\s+([^\r\n]+)')
+                            {
+                                $matches[1].Trim() 
+                            }
+                            else
+                            {
+                                'N/A' 
+                            }
 
                             # Common Kerberos error codes
-                            $errorDesc = switch ($errorCode) {
-                                '0x6' { 'Client not found' }
-                                '0x7' { 'Server not found' }
-                                '0xC' { 'Workstation restriction' }
-                                '0x12' { 'Client revoked/disabled' }
-                                '0x17' { 'Password expired' }
-                                '0x18' { 'Wrong password' }
-                                '0x25' { 'Clock skew too large' }
-                                default { "Code $errorCode" }
+                            $errorDesc = switch ($errorCode)
+                            {
+                                '0x6'
+                                {
+                                    'Client not found' 
+                                }
+                                '0x7'
+                                {
+                                    'Server not found' 
+                                }
+                                '0xC'
+                                {
+                                    'Workstation restriction' 
+                                }
+                                '0x12'
+                                {
+                                    'Client revoked/disabled' 
+                                }
+                                '0x17'
+                                {
+                                    'Password expired' 
+                                }
+                                '0x18'
+                                {
+                                    'Wrong password' 
+                                }
+                                '0x25'
+                                {
+                                    'Clock skew too large' 
+                                }
+                                default
+                                {
+                                    "Code $errorCode" 
+                                }
                             }
 
                             $eventType = 'Kerberos Pre-auth Failed'
@@ -709,14 +967,45 @@ function Get-RDPForensics {
                                 Details     = $details
                             }
                         }
-                        4772 {
+                        4772
+                        {
                             # Kerberos Authentication Ticket Request Failed
-                            $userName = if ($message -match 'Account Name:\s+([^\r\n]+)') { $matches[1].Trim() } else { 'N/A' }
-                            $userDomain = if ($message -match 'Account Domain:\s+([^\r\n]+)') { $matches[1].Trim() } else { 'N/A' }
-                            $sourceIP = if ($message -match 'Client Address:\s+::ffff:([^\r\n]+)') { $matches[1].Trim() }
-                            elseif ($message -match 'Client Address:\s+([^\r\n]+)') { $matches[1].Trim() }
-                            else { 'N/A' }
-                            $errorCode = if ($message -match 'Failure Code:\s+([^\r\n]+)') { $matches[1].Trim() } else { 'N/A' }
+                            $userName = if ($message -match 'Account Name:\s+([^\r\n]+)')
+                            {
+                                $matches[1].Trim() 
+                            }
+                            else
+                            {
+                                'N/A' 
+                            }
+                            $userDomain = if ($message -match 'Account Domain:\s+([^\r\n]+)')
+                            {
+                                $matches[1].Trim() 
+                            }
+                            else
+                            {
+                                'N/A' 
+                            }
+                            $sourceIP = if ($message -match 'Client Address:\s+::ffff:([^\r\n]+)')
+                            {
+                                $matches[1].Trim() 
+                            }
+                            elseif ($message -match 'Client Address:\s+([^\r\n]+)')
+                            {
+                                $matches[1].Trim() 
+                            }
+                            else
+                            {
+                                'N/A' 
+                            }
+                            $errorCode = if ($message -match 'Failure Code:\s+([^\r\n]+)')
+                            {
+                                $matches[1].Trim() 
+                            }
+                            else
+                            {
+                                'N/A' 
+                            }
 
                             $eventType = 'Kerberos Ticket Request Failed'
                             $details = "Error Code: $errorCode"
@@ -734,19 +1023,64 @@ function Get-RDPForensics {
                                 Details     = $details
                             }
                         }
-                        4776 {
+                        4776
+                        {
                             # NTLM Credential Validation
                             # 4776 has format "Logon Account: DOMAIN\Username"
-                            $logonAccount = if ($message -match 'Logon Account:\s+([^\r\n]+)') { $matches[1].Trim() } else { 'N/A' }
+                            $logonAccount = if ($message -match 'Logon Account:\s+([^\r\n]+)')
+                            {
+                                $matches[1].Trim() 
+                            }
+                            else
+                            {
+                                'N/A' 
+                            }
                             # Extract just the username if domain\username format
-                            $userName = if ($logonAccount -match '\\(.+)$') { $matches[1] }
-                            elseif ($logonAccount -ne 'N/A') { $logonAccount }
-                            else { 'N/A' }
-                            $userDomain = if ($message -match 'Source Workstation:\s+([^\r\n]+)') { $matches[1].Trim() } else { 'N/A' }
-                            $errorCode = if ($message -match 'Error Code:\s+([^\r\n]+)') { $matches[1].Trim() } else { 'N/A' }
-                            $authPackage = if ($message -match 'Authentication Package:\s+([^\r\n]+)') { $matches[1].Trim() } else { 'NTLM' }
+                            $userName = if ($logonAccount -match '\\(.+)$')
+                            {
+                                $matches[1] 
+                            }
+                            elseif ($logonAccount -ne 'N/A')
+                            {
+                                $logonAccount 
+                            }
+                            else
+                            {
+                                'N/A' 
+                            }
+                            $userDomain = if ($message -match 'Source Workstation:\s+([^\r\n]+)')
+                            {
+                                $matches[1].Trim() 
+                            }
+                            else
+                            {
+                                'N/A' 
+                            }
+                            $errorCode = if ($message -match 'Error Code:\s+([^\r\n]+)')
+                            {
+                                $matches[1].Trim() 
+                            }
+                            else
+                            {
+                                'N/A' 
+                            }
+                            $authPackage = if ($message -match 'Authentication Package:\s+([^\r\n]+)')
+                            {
+                                $matches[1].Trim() 
+                            }
+                            else
+                            {
+                                'NTLM' 
+                            }
 
-                            $eventType = if ($errorCode -eq '0x0') { 'NTLM Validation Success' } else { 'NTLM Validation Failed' }
+                            $eventType = if ($errorCode -eq '0x0')
+                            {
+                                'NTLM Validation Success' 
+                            }
+                            else
+                            {
+                                'NTLM Validation Failed' 
+                            }
                             $details = "$authPackage | Error Code: $errorCode | Source: $userDomain"
 
                             [PSCustomObject]@{
@@ -762,32 +1096,93 @@ function Get-RDPForensics {
                                 Details     = $details
                             }
                         }
-                        4648 {
+                        4648
+                        {
                             # Explicit Credential Usage (credential submission before logon)
                             # Shows WHO submitted credentials, FOR WHICH account, FROM WHERE
-                            $subjectUserName = if ($message -match 'Subject:[\s\S]*?Account Name:\s+([^\r\n]+)') { $matches[1].Trim() } else { 'N/A' }
-                            $subjectDomain = if ($message -match 'Subject:[\s\S]*?Account Domain:\s+([^\r\n]+)') { $matches[1].Trim() } else { 'N/A' }
-                            $subjectLogonID = if ($message -match 'Subject:[\s\S]*?Logon ID:\s+([^\r\n]+)') { $matches[1].Trim() } else { 'N/A' }
+                            $subjectUserName = if ($message -match 'Subject:[\s\S]*?Account Name:\s+([^\r\n]+)')
+                            {
+                                $matches[1].Trim() 
+                            }
+                            else
+                            {
+                                'N/A' 
+                            }
+                            $subjectDomain = if ($message -match 'Subject:[\s\S]*?Account Domain:\s+([^\r\n]+)')
+                            {
+                                $matches[1].Trim() 
+                            }
+                            else
+                            {
+                                'N/A' 
+                            }
+                            $subjectLogonID = if ($message -match 'Subject:[\s\S]*?Logon ID:\s+([^\r\n]+)')
+                            {
+                                $matches[1].Trim() 
+                            }
+                            else
+                            {
+                                'N/A' 
+                            }
 
-                            $targetUserName = if ($message -match 'Account Whose Credentials Were Used:[\s\S]*?Account Name:\s+([^\r\n]+)') { $matches[1].Trim() } else { 'N/A' }
-                            $targetDomain = if ($message -match 'Account Whose Credentials Were Used:[\s\S]*?Account Domain:\s+([^\r\n]+)') { $matches[1].Trim() } else { 'N/A' }
+                            $targetUserName = if ($message -match 'Account Whose Credentials Were Used:[\s\S]*?Account Name:\s+([^\r\n]+)')
+                            {
+                                $matches[1].Trim() 
+                            }
+                            else
+                            {
+                                'N/A' 
+                            }
+                            $targetDomain = if ($message -match 'Account Whose Credentials Were Used:[\s\S]*?Account Domain:\s+([^\r\n]+)')
+                            {
+                                $matches[1].Trim() 
+                            }
+                            else
+                            {
+                                'N/A' 
+                            }
 
-                            $targetServerName = if ($message -match 'Target Server:[\s\S]*?Target Server Name:\s+([^\r\n]+)') { $matches[1].Trim() } else { 'N/A' }
-                            $sourceIP = if ($message -match 'Network Information:[\s\S]*?Network Address:\s+([^\r\n]+)') { $matches[1].Trim() } else { 'N/A' }
-                            $processName = if ($message -match 'Process Information:[\s\S]*?Process Name:\s+([^\r\n]+)') { $matches[1].Trim() } else { 'N/A' }
+                            $targetServerName = if ($message -match 'Target Server:[\s\S]*?Target Server Name:\s+([^\r\n]+)')
+                            {
+                                $matches[1].Trim() 
+                            }
+                            else
+                            {
+                                'N/A' 
+                            }
+                            $sourceIP = if ($message -match 'Network Information:[\s\S]*?Network Address:\s+([^\r\n]+)')
+                            {
+                                $matches[1].Trim() 
+                            }
+                            else
+                            {
+                                'N/A' 
+                            }
+                            $processName = if ($message -match 'Process Information:[\s\S]*?Process Name:\s+([^\r\n]+)')
+                            {
+                                $matches[1].Trim() 
+                            }
+                            else
+                            {
+                                'N/A' 
+                            }
 
                             # Construct usernames
-                            if ($subjectDomain -ne 'N/A' -and $subjectDomain -ne '-' -and $subjectUserName -ne 'N/A') {
+                            if ($subjectDomain -ne 'N/A' -and $subjectDomain -ne '-' -and $subjectUserName -ne 'N/A')
+                            {
                                 $subjectFullName = "$subjectDomain\$subjectUserName"
                             }
-                            else {
+                            else
+                            {
                                 $subjectFullName = $subjectUserName
                             }
 
-                            if ($targetDomain -ne 'N/A' -and $targetDomain -ne '-' -and $targetUserName -ne 'N/A') {
+                            if ($targetDomain -ne 'N/A' -and $targetDomain -ne '-' -and $targetUserName -ne 'N/A')
+                            {
                                 $targetFullName = "$targetDomain\$targetUserName"
                             }
-                            else {
+                            else
+                            {
                                 $targetFullName = $targetUserName
                             }
 
@@ -811,39 +1206,122 @@ function Get-RDPForensics {
                                 Details     = $details
                             }
                         }
-                        default {
+                        default
+                        {
                             # Logon/Failed Logon (4624/4625)
                             # Match fields from "New Logon" section (not "Subject" section)
-                            $accountName = if ($message -match 'New Logon:[\s\S]*?Account Name:\s+([^\r\n]+)') { $matches[1].Trim() } else { 'N/A' }
-                            $userDomain = if ($message -match 'New Logon:[\s\S]*?Account Domain:\s+([^\r\n]+)') { $matches[1].Trim() } else { 'N/A' }
+                            $accountName = if ($message -match 'New Logon:[\s\S]*?Account Name:\s+([^\r\n]+)')
+                            {
+                                $matches[1].Trim() 
+                            }
+                            else
+                            {
+                                'N/A' 
+                            }
+                            $userDomain = if ($message -match 'New Logon:[\s\S]*?Account Domain:\s+([^\r\n]+)')
+                            {
+                                $matches[1].Trim() 
+                            }
+                            else
+                            {
+                                'N/A' 
+                            }
 
                             # Construct full username as DOMAIN\User to match TerminalServices event format
-                            if ($userDomain -ne 'N/A' -and $userDomain -ne '-' -and $accountName -ne 'N/A') {
+                            if ($userDomain -ne 'N/A' -and $userDomain -ne '-' -and $accountName -ne 'N/A')
+                            {
                                 $userName = "$userDomain\$accountName"
                             }
-                            else {
+                            else
+                            {
                                 $userName = $accountName
                             }
 
-                            $sourceIP = if ($message -match 'Source Network Address:\s+([^\r\n]+)') { $matches[1].Trim() } else { 'N/A' }
-                            $logonType = if ($message -match 'Logon Type:\s+([^\r\n]+)') { $matches[1].Trim() } else { 'N/A' }
-                            $logonID = if ($message -match 'New Logon:[\s\S]*?Logon ID:\s+([^\r\n]+)') { $matches[1].Trim() } else { 'N/A' }
-                            $workstation = if ($message -match 'Workstation Name:\s+([^\r\n]+)') { $matches[1].Trim() } else { 'N/A' }
-
-                            $logonTypeDesc = switch ($logonType) {
-                                '2' { 'Interactive (Local)' }
-                                '3' { 'Network' }
-                                '4' { 'Batch' }
-                                '5' { 'Service/Console' }
-                                '7' { 'Unlock/Reconnect' }
-                                '8' { 'NetworkCleartext' }
-                                '9' { 'NewCredentials' }
-                                '10' { 'RemoteInteractive (RDP)' }
-                                '11' { 'CachedInteractive' }
-                                default { "Unknown ($logonType)" }
+                            $sourceIP = if ($message -match 'Source Network Address:\s+([^\r\n]+)')
+                            {
+                                $matches[1].Trim() 
+                            }
+                            else
+                            {
+                                'N/A' 
+                            }
+                            $logonType = if ($message -match 'Logon Type:\s+([^\r\n]+)')
+                            {
+                                $matches[1].Trim() 
+                            }
+                            else
+                            {
+                                'N/A' 
+                            }
+                            $logonID = if ($message -match 'New Logon:[\s\S]*?Logon ID:\s+([^\r\n]+)')
+                            {
+                                $matches[1].Trim() 
+                            }
+                            else
+                            {
+                                'N/A' 
+                            }
+                            $workstation = if ($message -match 'Workstation Name:\s+([^\r\n]+)')
+                            {
+                                $matches[1].Trim() 
+                            }
+                            else
+                            {
+                                'N/A' 
                             }
 
-                            $eventType = if ($event.Id -eq 4624) { 'Successful Logon' } else { 'Failed Logon' }
+                            $logonTypeDesc = switch ($logonType)
+                            {
+                                '2'
+                                {
+                                    'Interactive (Local)' 
+                                }
+                                '3'
+                                {
+                                    'Network' 
+                                }
+                                '4'
+                                {
+                                    'Batch' 
+                                }
+                                '5'
+                                {
+                                    'Service/Console' 
+                                }
+                                '7'
+                                {
+                                    'Unlock/Reconnect' 
+                                }
+                                '8'
+                                {
+                                    'NetworkCleartext' 
+                                }
+                                '9'
+                                {
+                                    'NewCredentials' 
+                                }
+                                '10'
+                                {
+                                    'RemoteInteractive (RDP)' 
+                                }
+                                '11'
+                                {
+                                    'CachedInteractive' 
+                                }
+                                default
+                                {
+                                    "Unknown ($logonType)" 
+                                }
+                            }
+
+                            $eventType = if ($event.Id -eq 4624)
+                            {
+                                'Successful Logon' 
+                            }
+                            else
+                            {
+                                'Failed Logon' 
+                            }
 
                             [PSCustomObject]@{
                                 TimeCreated = $event.TimeCreated
@@ -866,24 +1344,28 @@ function Get-RDPForensics {
                 Write-Host " authentication events" -ForegroundColor Green
                 return $results
             }
-            else {
+            else
+            {
                 Write-Host "  $(Get-Emoji 'cross') No authentication events found" -ForegroundColor DarkGray
                 return @()
             }
         }
-        catch {
+        catch
+        {
             Write-Warning "Error collecting authentication events: $_"
             return @()
         }
     }
 
     # Function to parse Session Logon/Logoff Events
-    function Get-RDPSessionEvents {
+    function Get-RDPSessionEvents
+    {
         param([DateTime]$Start, [DateTime]$End)
 
         Write-Host "$(Get-Emoji 'computer') [3/6] Collecting RDP Session Events (EventID 21-25, 39, 40)..." -ForegroundColor Yellow
 
-        try {
+        try
+        {
             $events = Get-WinEvent -FilterHashtable @{
                 LogName   = 'Microsoft-Windows-TerminalServices-LocalSessionManager/Operational'
                 Id        = 21, 22, 23, 24, 25, 39, 40
@@ -891,53 +1373,119 @@ function Get-RDPForensics {
                 EndTime   = $End
             } -ErrorAction SilentlyContinue
 
-            if ($events) {
+            if ($events)
+            {
                 [xml[]]$xml = $events | ForEach-Object { $_.ToXml() }
 
-                $results = foreach ($event in $xml.Event) {
+                $results = foreach ($event in $xml.Event)
+                {
                     $eventID = $event.System.EventID
                     $timeCreated = [DateTime]::Parse($event.System.TimeCreated.SystemTime)
 
                     # Extract ActivityID from Correlation element
-                    $activityID = if ($event.System.Correlation.ActivityID) {
+                    $activityID = if ($event.System.Correlation.ActivityID)
+                    {
                         $event.System.Correlation.ActivityID
                     }
-                    else {
+                    else
+                    {
                         $null
                     }
 
                     # Parse UserData
-                    $user = if ($event.UserData.EventXML.User) { $event.UserData.EventXML.User } else { 'N/A' }
-                    $sessionID = if ($event.UserData.EventXML.SessionID) { $event.UserData.EventXML.SessionID } else { 'N/A' }
-                    $address = if ($event.UserData.EventXML.Address) { $event.UserData.EventXML.Address } else { 'N/A' }
-
-                    $eventType = switch ($eventID) {
-                        21 { 'Session Logon Succeeded' }
-                        22 { 'Shell Start Notification' }
-                        23 { 'Session Logoff Succeeded' }
-                        24 { 'Session Disconnected' }
-                        25 { 'Session Reconnected' }
-                        39 { 'Session Disconnected by Another Session' }
-                        40 { 'Session Disconnected (With Reason Code)' }
-                        default { "Event $eventID" }
+                    $user = if ($event.UserData.EventXML.User)
+                    {
+                        $event.UserData.EventXML.User 
+                    }
+                    else
+                    {
+                        'N/A' 
+                    }
+                    $sessionID = if ($event.UserData.EventXML.SessionID)
+                    {
+                        $event.UserData.EventXML.SessionID 
+                    }
+                    else
+                    {
+                        'N/A' 
+                    }
+                    $address = if ($event.UserData.EventXML.Address)
+                    {
+                        $event.UserData.EventXML.Address 
+                    }
+                    else
+                    {
+                        'N/A' 
                     }
 
-                    $details = if ($eventID -eq 40) {
+                    $eventType = switch ($eventID)
+                    {
+                        21
+                        {
+                            'Session Logon Succeeded' 
+                        }
+                        22
+                        {
+                            'Shell Start Notification' 
+                        }
+                        23
+                        {
+                            'Session Logoff Succeeded' 
+                        }
+                        24
+                        {
+                            'Session Disconnected' 
+                        }
+                        25
+                        {
+                            'Session Reconnected' 
+                        }
+                        39
+                        {
+                            'Session Disconnected by Another Session' 
+                        }
+                        40
+                        {
+                            'Session Disconnected (With Reason Code)' 
+                        }
+                        default
+                        {
+                            "Event $eventID" 
+                        }
+                    }
+
+                    $details = if ($eventID -eq 40)
+                    {
                         $reasonCode = $event.UserData.EventXML.Reason
-                        $reasonText = switch ($reasonCode) {
-                            0 { 'No additional information' }
-                            5 { 'Client connection replaced by another' }
-                            11 { 'User activity initiated disconnect' }
-                            default { "Reason code: $reasonCode" }
+                        $reasonText = switch ($reasonCode)
+                        {
+                            0
+                            {
+                                'No additional information' 
+                            }
+                            5
+                            {
+                                'Client connection replaced by another' 
+                            }
+                            11
+                            {
+                                'User activity initiated disconnect' 
+                            }
+                            default
+                            {
+                                "Reason code: $reasonCode" 
+                            }
                         }
                         $reasonText
                     }
-                    elseif ($eventID -eq 39) {
+                    elseif ($eventID -eq 39)
+                    {
                         $sessionA = $event.UserData.EventXML.SessionID
                         $sessionB = $event.UserData.EventXML.Param2
                         "Session $sessionA disconnected by session $sessionB"
                     }
-                    else {
+                    else
+                    {
                         "Session ID: $sessionID"
                     }
 
@@ -960,24 +1508,28 @@ function Get-RDPForensics {
                 Write-Host " session events" -ForegroundColor Green
                 return $results
             }
-            else {
+            else
+            {
                 Write-Host "  $(Get-Emoji 'cross') No session events found" -ForegroundColor DarkGray
                 return @()
             }
         }
-        catch {
+        catch
+        {
             Write-Warning "Error collecting session events: $_"
             return @()
         }
     }
 
     # Function to parse Session Lock/Unlock Events
-    function Get-RDPLockUnlockEvents {
+    function Get-RDPLockUnlockEvents
+    {
         param([DateTime]$Start, [DateTime]$End)
 
         Write-Host "$(Get-Emoji 'lock') [4/7] Collecting Session Lock/Unlock Events (EventID 4800, 4801)..." -ForegroundColor Yellow
 
-        try {
+        try
+        {
             $events = Get-WinEvent -FilterHashtable @{
                 LogName   = 'Security'
                 Id        = 4800, 4801
@@ -985,34 +1537,75 @@ function Get-RDPForensics {
                 EndTime   = $End
             } -ErrorAction SilentlyContinue
 
-            if ($events) {
-                $results = foreach ($event in $events) {
+            if ($events)
+            {
+                $results = foreach ($event in $events)
+                {
                     $message = $event.Message
 
                     # Extract ActivityID from XML
                     [xml]$eventXml = $event.ToXml()
-                    $activityID = if ($eventXml.Event.System.Correlation.ActivityID) {
+                    $activityID = if ($eventXml.Event.System.Correlation.ActivityID)
+                    {
                         $eventXml.Event.System.Correlation.ActivityID
                     }
-                    else {
+                    else
+                    {
                         $null
                     }
 
-                    $accountName = if ($message -match 'Subject:.*?Account Name:\s+([^\r\n]+)') { $matches[1].Trim() } else { 'N/A' }
-                    $userDomain = if ($message -match 'Subject:.*?Account Domain:\s+([^\r\n]+)') { $matches[1].Trim() } else { 'N/A' }
+                    $accountName = if ($message -match 'Subject:.*?Account Name:\s+([^\r\n]+)')
+                    {
+                        $matches[1].Trim() 
+                    }
+                    else
+                    {
+                        'N/A' 
+                    }
+                    $userDomain = if ($message -match 'Subject:.*?Account Domain:\s+([^\r\n]+)')
+                    {
+                        $matches[1].Trim() 
+                    }
+                    else
+                    {
+                        'N/A' 
+                    }
 
                     # Construct DOMAIN\User format to match TerminalServices events
-                    if ($userDomain -ne 'N/A' -and $userDomain -ne '-' -and $accountName -ne 'N/A') {
+                    if ($userDomain -ne 'N/A' -and $userDomain -ne '-' -and $accountName -ne 'N/A')
+                    {
                         $userName = "$userDomain\$accountName"
                     }
-                    else {
+                    else
+                    {
                         $userName = $accountName
                     }
 
-                    $logonID = if ($message -match 'Subject:.*?Logon ID:\s+([^\r\n]+)') { $matches[1].Trim() } else { 'N/A' }
-                    $sessionID = if ($message -match 'Session ID:\s+([^\r\n]+)') { $matches[1].Trim() } else { 'N/A' }
+                    $logonID = if ($message -match 'Subject:.*?Logon ID:\s+([^\r\n]+)')
+                    {
+                        $matches[1].Trim() 
+                    }
+                    else
+                    {
+                        'N/A' 
+                    }
+                    $sessionID = if ($message -match 'Session ID:\s+([^\r\n]+)')
+                    {
+                        $matches[1].Trim() 
+                    }
+                    else
+                    {
+                        'N/A' 
+                    }
 
-                    $eventType = if ($event.Id -eq 4800) { 'Workstation Locked' } else { 'Workstation Unlocked' }
+                    $eventType = if ($event.Id -eq 4800)
+                    {
+                        'Workstation Locked' 
+                    }
+                    else
+                    {
+                        'Workstation Unlocked' 
+                    }
 
                     [PSCustomObject]@{
                         TimeCreated = $event.TimeCreated
@@ -1033,24 +1626,28 @@ function Get-RDPForensics {
                 Write-Host " lock/unlock events" -ForegroundColor Green
                 return $results
             }
-            else {
+            else
+            {
                 Write-Host "  $(Get-Emoji 'cross') No lock/unlock events found" -ForegroundColor DarkGray
                 return @()
             }
         }
-        catch {
+        catch
+        {
             Write-Warning "Error collecting lock/unlock events: $_"
             return @()
         }
     }
 
     # Function to parse Session Reconnect/Disconnect from Security Log
-    function Get-RDPSessionReconnectEvents {
+    function Get-RDPSessionReconnectEvents
+    {
         param([DateTime]$Start, [DateTime]$End)
 
         Write-Host "$(Get-Emoji 'lock') [5/7] Collecting RDP Reconnect/Disconnect Events (EventID 4778, 4779)..." -ForegroundColor Yellow
 
-        try {
+        try
+        {
             $events = Get-WinEvent -FilterHashtable @{
                 LogName   = 'Security'
                 Id        = 4778, 4779
@@ -1058,35 +1655,83 @@ function Get-RDPForensics {
                 EndTime   = $End
             } -ErrorAction SilentlyContinue
 
-            if ($events) {
-                $results = foreach ($event in $events) {
+            if ($events)
+            {
+                $results = foreach ($event in $events)
+                {
                     $message = $event.Message
 
                     # Extract ActivityID from XML
                     [xml]$eventXml = $event.ToXml()
-                    $activityID = if ($eventXml.Event.System.Correlation.ActivityID) {
+                    $activityID = if ($eventXml.Event.System.Correlation.ActivityID)
+                    {
                         $eventXml.Event.System.Correlation.ActivityID
                     }
-                    else {
+                    else
+                    {
                         $null
                     }
 
-                    $accountName = if ($message -match 'Account Name:\s+([^\r\n]+)') { $matches[1].Trim() } else { 'N/A' }
-                    $userDomain = if ($message -match 'Account Domain:\s+([^\r\n]+)') { $matches[1].Trim() } else { 'N/A' }
+                    $accountName = if ($message -match 'Account Name:\s+([^\r\n]+)')
+                    {
+                        $matches[1].Trim() 
+                    }
+                    else
+                    {
+                        'N/A' 
+                    }
+                    $userDomain = if ($message -match 'Account Domain:\s+([^\r\n]+)')
+                    {
+                        $matches[1].Trim() 
+                    }
+                    else
+                    {
+                        'N/A' 
+                    }
 
                     # Construct DOMAIN\User format to match TerminalServices events
-                    if ($userDomain -ne 'N/A' -and $userDomain -ne '-' -and $accountName -ne 'N/A') {
+                    if ($userDomain -ne 'N/A' -and $userDomain -ne '-' -and $accountName -ne 'N/A')
+                    {
                         $userName = "$userDomain\$accountName"
                     }
-                    else {
+                    else
+                    {
                         $userName = $accountName
                     }
 
-                    $logonID = if ($message -match 'Logon ID:\s+([^\r\n]+)') { $matches[1].Trim() } else { 'N/A' }
-                    $sessionName = if ($message -match 'Session Name:\s+([^\r\n]+)') { $matches[1].Trim() } else { 'N/A' }
-                    $sourceIP = if ($message -match 'Client Address:\s+([^\r\n]+)') { $matches[1].Trim() } else { 'N/A' }
+                    $logonID = if ($message -match 'Logon ID:\s+([^\r\n]+)')
+                    {
+                        $matches[1].Trim() 
+                    }
+                    else
+                    {
+                        'N/A' 
+                    }
+                    $sessionName = if ($message -match 'Session Name:\s+([^\r\n]+)')
+                    {
+                        $matches[1].Trim() 
+                    }
+                    else
+                    {
+                        'N/A' 
+                    }
+                    $sourceIP = if ($message -match 'Client Address:\s+([^\r\n]+)')
+                    {
+                        $matches[1].Trim() 
+                    }
+                    else
+                    {
+                        'N/A' 
+                    }
 
-                    $eventType = if ($event.Id -eq 4778) { 'Session Reconnected' } else { 'Session Disconnected' }
+                    $eventType = if ($event.Id -eq 4778)
+                    {
+                        'Session Reconnected' 
+                    }
+                    else
+                    {
+                        'Session Disconnected' 
+                    }
 
                     [PSCustomObject]@{
                         TimeCreated = $event.TimeCreated
@@ -1107,24 +1752,28 @@ function Get-RDPForensics {
                 Write-Host " reconnect/disconnect events" -ForegroundColor Green
                 return $results
             }
-            else {
+            else
+            {
                 Write-Host "  $(Get-Emoji 'cross') No reconnect/disconnect events found" -ForegroundColor DarkGray
                 return @()
             }
         }
-        catch {
+        catch
+        {
             Write-Warning "Error collecting reconnect/disconnect events: $_"
             return @()
         }
     }
 
     # Function to parse Logoff Events
-    function Get-RDPLogoffEvents {
+    function Get-RDPLogoffEvents
+    {
         param([DateTime]$Start, [DateTime]$End)
 
         Write-Host "$(Get-Emoji 'warning') [6/7] Collecting RDP Logoff Events (EventID 4634, 4647, 9009)..." -ForegroundColor Yellow
 
-        try {
+        try
+        {
             # Security log logoff events
             $securityEvents = Get-WinEvent -FilterHashtable @{
                 LogName   = 'Security'
@@ -1145,34 +1794,75 @@ function Get-RDPForensics {
 
             $results = @()
 
-            if ($securityEvents) {
-                foreach ($event in $securityEvents) {
+            if ($securityEvents)
+            {
+                foreach ($event in $securityEvents)
+                {
                     $message = $event.Message
 
                     # Extract ActivityID from XML
                     [xml]$eventXml = $event.ToXml()
-                    $activityID = if ($eventXml.Event.System.Correlation.ActivityID) {
+                    $activityID = if ($eventXml.Event.System.Correlation.ActivityID)
+                    {
                         $eventXml.Event.System.Correlation.ActivityID
                     }
-                    else {
+                    else
+                    {
                         $null
                     }
 
-                    $accountName = if ($message -match 'Account Name:\s+([^\r\n]+)') { $matches[1].Trim() } else { 'N/A' }
-                    $userDomain = if ($message -match 'Account Domain:\s+([^\r\n]+)') { $matches[1].Trim() } else { 'N/A' }
+                    $accountName = if ($message -match 'Account Name:\s+([^\r\n]+)')
+                    {
+                        $matches[1].Trim() 
+                    }
+                    else
+                    {
+                        'N/A' 
+                    }
+                    $userDomain = if ($message -match 'Account Domain:\s+([^\r\n]+)')
+                    {
+                        $matches[1].Trim() 
+                    }
+                    else
+                    {
+                        'N/A' 
+                    }
 
                     # Construct DOMAIN\User format to match TerminalServices events
-                    if ($userDomain -ne 'N/A' -and $userDomain -ne '-' -and $accountName -ne 'N/A') {
+                    if ($userDomain -ne 'N/A' -and $userDomain -ne '-' -and $accountName -ne 'N/A')
+                    {
                         $userName = "$userDomain\$accountName"
                     }
-                    else {
+                    else
+                    {
                         $userName = $accountName
                     }
 
-                    $logonID = if ($message -match 'Logon ID:\s+([^\r\n]+)') { $matches[1].Trim() } else { 'N/A' }
-                    $logonType = if ($message -match 'Logon Type:\s+([^\r\n]+)') { $matches[1].Trim() } else { 'N/A' }
+                    $logonID = if ($message -match 'Logon ID:\s+([^\r\n]+)')
+                    {
+                        $matches[1].Trim() 
+                    }
+                    else
+                    {
+                        'N/A' 
+                    }
+                    $logonType = if ($message -match 'Logon Type:\s+([^\r\n]+)')
+                    {
+                        $matches[1].Trim() 
+                    }
+                    else
+                    {
+                        'N/A' 
+                    }
 
-                    $eventType = if ($event.Id -eq 4647) { 'User-Initiated Logoff' } else { 'Account Logged Off' }
+                    $eventType = if ($event.Id -eq 4647)
+                    {
+                        'User-Initiated Logoff' 
+                    }
+                    else
+                    {
+                        'Account Logged Off' 
+                    }
 
                     $results += [PSCustomObject]@{
                         TimeCreated = $event.TimeCreated
@@ -1189,14 +1879,18 @@ function Get-RDPForensics {
                 }
             }
 
-            if ($systemEvents) {
-                foreach ($event in $systemEvents) {
+            if ($systemEvents)
+            {
+                foreach ($event in $systemEvents)
+                {
                     # Extract ActivityID from XML
                     [xml]$eventXml = $event.ToXml()
-                    $activityID = if ($eventXml.Event.System.Correlation.ActivityID) {
+                    $activityID = if ($eventXml.Event.System.Correlation.ActivityID)
+                    {
                         $eventXml.Event.System.Correlation.ActivityID
                     }
-                    else {
+                    else
+                    {
                         $null
                     }
 
@@ -1220,19 +1914,22 @@ function Get-RDPForensics {
             Write-Host " logoff events" -ForegroundColor Green
             return $results
         }
-        catch {
+        catch
+        {
             Write-Warning "Error collecting logoff events: $_"
             return @()
         }
     }
 
     # Function to get outbound RDP connections
-    function Get-OutboundRDPConnections {
+    function Get-OutboundRDPConnections
+    {
         param([DateTime]$Start, [DateTime]$End)
 
         Write-Host "$(Get-Emoji 'magnify') [7/7] Collecting Outbound RDP Connections (EventID 1102)..." -ForegroundColor Yellow
 
-        try {
+        try
+        {
             $events = Get-WinEvent -FilterHashtable @{
                 LogName   = 'Microsoft-Windows-TerminalServices-RDPClient/Operational'
                 Id        = 1102
@@ -1240,18 +1937,26 @@ function Get-RDPForensics {
                 EndTime   = $End
             } -ErrorAction SilentlyContinue
 
-            if ($events) {
-                $results = foreach ($event in $events) {
+            if ($events)
+            {
+                $results = foreach ($event in $events)
+                {
                     $targetHost = $event.Properties[1].Value
-                    $localUser = if ($event.UserId) {
-                        try {
+                    $localUser = if ($event.UserId)
+                    {
+                        try
+                        {
                             (New-Object System.Security.Principal.SecurityIdentifier($event.UserId)).Translate([System.Security.Principal.NTAccount]).Value
                         }
-                        catch {
+                        catch
+                        {
                             $event.UserId.Value
                         }
                     }
-                    else { 'N/A' }
+                    else
+                    {
+                        'N/A' 
+                    }
 
                     [PSCustomObject]@{
                         TimeCreated = $event.TimeCreated
@@ -1269,12 +1974,14 @@ function Get-RDPForensics {
                 Write-Host "  Found $($results.Count) outbound connections" -ForegroundColor Green
                 return $results
             }
-            else {
+            else
+            {
                 Write-Host "  $(Get-Emoji 'cross') No outbound connections found" -ForegroundColor DarkGray
                 return @()
             }
         }
-        catch {
+        catch
+        {
             Write-Warning "Error collecting outbound connections: $_"
             return @()
         }
@@ -1289,22 +1996,26 @@ function Get-RDPForensics {
     $allEvents += Get-RDPSessionReconnectEvents -Start $StartDate -End $EndDate
     $allEvents += Get-RDPLogoffEvents -Start $StartDate -End $EndDate
 
-    if ($IncludeOutbound) {
+    if ($IncludeOutbound)
+    {
         $allEvents += Get-OutboundRDPConnections -Start $StartDate -End $EndDate
     }
 
     # Apply filters
-    if ($Username) {
+    if ($Username)
+    {
         Write-Host "`nFiltering for username: $Username" -ForegroundColor Cyan
         $allEvents = $allEvents | Where-Object { $_.User -like "*$Username*" }
     }
 
-    if ($SourceIP) {
+    if ($SourceIP)
+    {
         Write-Host "Filtering for source IP: $SourceIP" -ForegroundColor Cyan
         $allEvents = $allEvents | Where-Object { $_.SourceIP -like "*$SourceIP*" }
     }
 
-    if ($SessionID) {
+    if ($SessionID)
+    {
         Write-Host "Filtering for SessionID: $SessionID" -ForegroundColor Cyan
         # Filter events to only those matching SessionID OR Security events without SessionID
         $allEvents = $allEvents | Where-Object {
@@ -1313,7 +2024,8 @@ function Get-RDPForensics {
         }
     }
 
-    if ($LogonID) {
+    if ($LogonID)
+    {
         Write-Host "Filtering for LogonID: $LogonID" -ForegroundColor Cyan
         # Filter events to only those matching LogonID OR events without LogonID (like pre-auth, session events)
         $allEvents = $allEvents | Where-Object {
@@ -1326,7 +2038,8 @@ function Get-RDPForensics {
     $allEvents = $allEvents | Sort-Object TimeCreated -Descending
 
     # Correlate events by LogonID and SessionID if GroupBySession is specified
-    if ($GroupBySession) {
+    if ($GroupBySession)
+    {
         Write-Host "`n" -NoNewline
         Write-Host "$(Get-Emoji 'key') Correlating events by LogonID/SessionID..." -ForegroundColor Cyan
         $correlationResult = Get-CorrelatedSessions -Events $allEvents
@@ -1336,7 +2049,8 @@ function Get-RDPForensics {
         Write-Host "$($sessions.Count)" -ForegroundColor White -NoNewline
         Write-Host " unique sessions (using LogonID-based correlation)" -ForegroundColor Green
 
-        if ($IncludeCredentialValidation) {
+        if ($IncludeCredentialValidation)
+        {
             $preAuthCount = ($allEvents | Where-Object { $_.EventID -in 4768, 4769, 4770, 4771, 4772, 4776 }).Count
             Write-Host "  $(Get-Emoji 'check') Filtered to " -ForegroundColor Green -NoNewline
             Write-Host "$preAuthCount" -ForegroundColor White -NoNewline
@@ -1344,25 +2058,31 @@ function Get-RDPForensics {
         }
 
         # Post-correlation filtering: Only show sessions that match SessionID/LogonID
-        if ($SessionID) {
+        if ($SessionID)
+        {
             $sessions = $sessions | Where-Object {
                 $_.Events | Where-Object { $_.SessionID -eq $SessionID -or $_.SessionID -eq [string]$SessionID }
             }
-            if ($sessions.Count -eq 0) {
+            if ($sessions.Count -eq 0)
+            {
                 Write-Host "  $(Get-Emoji 'warning') No sessions found with SessionID: $SessionID" -ForegroundColor Yellow
             }
-            else {
+            else
+            {
                 # Update event list to only show events from filtered sessions
                 $allEvents = @($sessions | ForEach-Object { $_.Events }) | Sort-Object TimeCreated -Descending
             }
         }
 
-        if ($LogonID) {
+        if ($LogonID)
+        {
             $sessions = $sessions | Where-Object { $_.LogonID -eq $LogonID }
-            if ($sessions.Count -eq 0) {
+            if ($sessions.Count -eq 0)
+            {
                 Write-Host "  $(Get-Emoji 'warning') No sessions found with LogonID: $LogonID" -ForegroundColor Yellow
             }
-            else {
+            else
+            {
                 # Update event list to only show events from filtered sessions
                 $allEvents = @($sessions | ForEach-Object { $_.Events }) | Sort-Object TimeCreated -Descending
             }
@@ -1378,7 +2098,8 @@ function Get-RDPForensics {
     Write-Host "Total Events: " -ForegroundColor Yellow -NoNewline
     Write-Host "$($allEvents.Count)" -ForegroundColor White
 
-    if ($allEvents.Count -gt 0) {
+    if ($allEvents.Count -gt 0)
+    {
         # Group by event type
         $groupedEvents = $allEvents | Group-Object EventType | Sort-Object Count -Descending
         Write-Host "`nEvents by Type:" -ForegroundColor Yellow
@@ -1387,7 +2108,8 @@ function Get-RDPForensics {
         }
 
         # Display session-grouped results if requested
-        if ($GroupBySession -and $sessions) {
+        if ($GroupBySession -and $sessions)
+        {
             Write-Host "`n" -NoNewline
             Write-Host ($separator * 58) -ForegroundColor DarkCyan
             Write-Host "$(Get-Emoji 'key') CORRELATED RDP SESSIONS" -ForegroundColor Cyan
@@ -1397,7 +2119,8 @@ function Get-RDPForensics {
             $sessionSep = [string][char]0x2500  # Horizontal line
             $arrow = [string][char]0x2192  # Right arrow
 
-            foreach ($session in $sessions | Select-Object -First 20) {
+            foreach ($session in $sessions | Select-Object -First 20)
+            {
                 Write-Host "`n" -NoNewline
                 Write-Host "$($sessionSep * 3) Session: " -ForegroundColor DarkGray -NoNewline
                 Write-Host "$($session.CorrelationKey)" -ForegroundColor White -NoNewline
@@ -1417,33 +2140,80 @@ function Get-RDPForensics {
                 Write-Host "$($session.Duration)" -ForegroundColor Yellow
 
                 Write-Host "  $(Get-Emoji 'chart') Lifecycle: " -ForegroundColor Cyan -NoNewline
-                if ($session.ConnectionAttempt) { Write-Host "Connect " -ForegroundColor Green -NoNewline } else { Write-Host "- " -ForegroundColor DarkGray -NoNewline }
+                if ($session.ConnectionAttempt)
+                {
+                    Write-Host "Connect " -ForegroundColor Green -NoNewline 
+                }
+                else
+                {
+                    Write-Host "- " -ForegroundColor DarkGray -NoNewline 
+                }
                 Write-Host "$arrow " -ForegroundColor DarkGray -NoNewline
-                if ($session.Authentication) { Write-Host "Auth " -ForegroundColor Green -NoNewline } else { Write-Host "- " -ForegroundColor DarkGray -NoNewline }
+                if ($session.Authentication)
+                {
+                    Write-Host "Auth " -ForegroundColor Green -NoNewline 
+                }
+                else
+                {
+                    Write-Host "- " -ForegroundColor DarkGray -NoNewline 
+                }
                 Write-Host "$arrow " -ForegroundColor DarkGray -NoNewline
-                if ($session.Logon) { Write-Host "Logon " -ForegroundColor Green -NoNewline } else { Write-Host "- " -ForegroundColor DarkGray -NoNewline }
+                if ($session.Logon)
+                {
+                    Write-Host "Logon " -ForegroundColor Green -NoNewline 
+                }
+                else
+                {
+                    Write-Host "- " -ForegroundColor DarkGray -NoNewline 
+                }
                 Write-Host "$arrow " -ForegroundColor DarkGray -NoNewline
-                if ($session.Active) { Write-Host "Active " -ForegroundColor Green -NoNewline } else { Write-Host "- " -ForegroundColor DarkGray -NoNewline }
+                if ($session.Active)
+                {
+                    Write-Host "Active " -ForegroundColor Green -NoNewline 
+                }
+                else
+                {
+                    Write-Host "- " -ForegroundColor DarkGray -NoNewline 
+                }
                 Write-Host "$arrow " -ForegroundColor DarkGray -NoNewline
-                if ($session.Disconnect) { Write-Host "Disconnect " -ForegroundColor Yellow -NoNewline } else { Write-Host "- " -ForegroundColor DarkGray -NoNewline }
+                if ($session.Disconnect)
+                {
+                    Write-Host "Disconnect " -ForegroundColor Yellow -NoNewline 
+                }
+                else
+                {
+                    Write-Host "- " -ForegroundColor DarkGray -NoNewline 
+                }
                 Write-Host "$arrow " -ForegroundColor DarkGray -NoNewline
-                if ($session.Logoff) { Write-Host "Logoff" -ForegroundColor Green } else { Write-Host "-" -ForegroundColor DarkGray }
+                if ($session.Logoff)
+                {
+                    Write-Host "Logoff" -ForegroundColor Green 
+                }
+                else
+                {
+                    Write-Host "-" -ForegroundColor DarkGray 
+                }
 
                 Write-Host "  $(Get-Emoji 'folder') Events: " -ForegroundColor Cyan -NoNewline
                 Write-Host "$($session.EventCount)" -ForegroundColor White -NoNewline
-                if (-not $session.LifecycleComplete) {
+                if (-not $session.LifecycleComplete)
+                {
                     # Provide specific warning based on what's missing
-                    if (-not $session.Authentication -and -not $session.Logon) {
+                    if (-not $session.Authentication -and -not $session.Logon)
+                    {
                         Write-Host "  $(Get-Emoji 'warning') Missing authentication/logon events" -ForegroundColor Yellow
                     }
-                    elseif ($session.Logoff -and -not $session.Logon) {
+                    elseif ($session.Logoff -and -not $session.Logon)
+                    {
                         Write-Host "  $(Get-Emoji 'warning') Suspicious: Logoff without Logon" -ForegroundColor Red
                     }
-                    else {
+                    else
+                    {
                         Write-Host "  $(Get-Emoji 'warning') Partial session data (may be active or outside time window)" -ForegroundColor Yellow
                     }
                 }
-                else {
+                else
+                {
                     Write-Host ""
                 }
 
@@ -1452,11 +2222,13 @@ function Get-RDPForensics {
                 $session.Events | Sort-Object TimeCreated | Format-Table TimeCreated, EventID, EventType, User, SourceIP, SessionID, LogonID, Details -AutoSize
             }
 
-            if ($sessions.Count -gt 20) {
+            if ($sessions.Count -gt 20)
+            {
                 Write-Host "`n... and $($sessions.Count - 20) more sessions" -ForegroundColor DarkGray
             }
         }
-        else {
+        else
+        {
             # Display recent events (default view)
             Write-Host "`n" -NoNewline
             Write-Host ($separator * 58) -ForegroundColor DarkCyan
@@ -1466,8 +2238,10 @@ function Get-RDPForensics {
         }
 
         # Export if requested
-        if ($ExportPath) {
-            if (-not (Test-Path $ExportPath)) {
+        if ($ExportPath)
+        {
+            if (-not (Test-Path $ExportPath))
+            {
                 New-Item -Path $ExportPath -ItemType Directory -Force | Out-Null
             }
 
@@ -1504,17 +2278,19 @@ $($allEvents | Where-Object { $_.SourceIP -ne 'N/A' -and $_.SourceIP -ne 'Local 
             Write-Host "$summaryFile" -ForegroundColor White
 
             # Export sessions if correlation was used
-            if ($GroupBySession -and $sessions) {
+            if ($GroupBySession -and $sessions)
+            {
                 $sessionFile = Join-Path $ExportPath "RDP_Sessions_$timestamp.csv"
                 $sessions | Select-Object CorrelationKey, User, SourceIP, StartTime, EndTime, Duration, EventCount,
                 ConnectionAttempt, Authentication, Logon, Active, Disconnect, Logoff, LifecycleComplete |
-                Export-Csv -Path $sessionFile -NoTypeInformation -Encoding UTF8
+                    Export-Csv -Path $sessionFile -NoTypeInformation -Encoding UTF8
                 Write-Host "$(Get-Emoji 'check') Sessions exported to: " -ForegroundColor Green -NoNewline
                 Write-Host "$sessionFile" -ForegroundColor White
             }
         }
     }
-    else {
+    else
+    {
         Write-Host "`n$(Get-Emoji 'warning') No RDP events found matching the criteria." -ForegroundColor Yellow
     }
 

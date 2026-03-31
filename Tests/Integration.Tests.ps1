@@ -84,11 +84,11 @@ Describe "Integration - Complete Forensic Workflow" {
 
     Context "Real-time Monitoring Scenario" {
         It "Should display current sessions" {
-            { Get-CurrentRDPSessions } | Should -Not -Throw
+            { Get-RDPCurrentSessions } | Should -Not -Throw
         }
 
         It "Should show session details with processes" {
-            { Get-CurrentRDPSessions -ShowProcesses } | Should -Not -Throw
+            { Get-RDPCurrentSessions -ShowProcesses } | Should -Not -Throw
         }
     }
 }
@@ -98,7 +98,7 @@ Describe "Integration - Combined Script Usage" {
     Context "Historical Analysis + Current State" {
         It "Should analyze past events and current sessions together" {
             $historical = Get-RDPForensics -StartDate (Get-Date).AddHours(-24)
-            { Get-CurrentRDPSessions } | Should -Not -Throw
+            { Get-RDPCurrentSessions } | Should -Not -Throw
 
             # Both should complete without error
             $historical | Should -Not -BeNullOrEmpty
@@ -165,8 +165,8 @@ Describe "Integration - Module Loading" {
             Get-Command Get-RDPForensics -Module RDP-Forensic -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
         }
 
-        It "Module should export Get-CurrentRDPSessions function" {
-            Get-Command Get-CurrentRDPSessions -Module RDP-Forensic -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
+        It "Module should export Get-RDPCurrentSessions function" {
+            Get-Command Get-RDPCurrentSessions -Module RDP-Forensic -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
         }
     }
 }

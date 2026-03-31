@@ -37,7 +37,7 @@ Get-Module -Name Pester -ListAvailable
 |------|-------------|-------|
 | `Get-RDPForensics.Tests.ps1` | Main script unit tests | 50+ |
 | `Get-RDPForensics.Correlation.Tests.ps1` | Session correlation & ActivityID tests | 25+ |
-| `Get-CurrentRDPSessions.Tests.ps1` | Session monitoring tests | 10+ |
+| `Get-RDPCurrentSessions.Tests.ps1` | Session monitoring tests | 10+ |
 | `Integration.Tests.ps1` | End-to-end workflow tests | 15+ |
 | `PowerShellVersion.Tests.ps1` | **NEW** PS 5.1/7+ compatibility tests | 40+ |
 | `RunAllTests.ps1` | Master test runner | - |
@@ -82,7 +82,7 @@ cd Tests
 Invoke-Pester -Path .\Get-RDPForensics.Tests.ps1 -Output Detailed
 
 # Session monitoring tests only
-Invoke-Pester -Path .\Get-CurrentRDPSessions.Tests.ps1 -Output Detailed
+Invoke-Pester -Path .\Get-RDPCurrentSessions.Tests.ps1 -Output Detailed
 
 # Integration tests only
 Invoke-Pester -Path .\Integration.Tests.ps1 -Output Detailed

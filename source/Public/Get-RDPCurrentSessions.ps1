@@ -1,4 +1,4 @@
-function Get-CurrentRDPSessions {
+function Get-RDPCurrentSessions {
     <#
 .SYNOPSIS
     Display current active RDP sessions on the system.
@@ -22,36 +22,35 @@ function Get-CurrentRDPSessions {
     Creates a timestamped CSV file for later analysis. Works in both single-check and Watch mode.
 
 .EXAMPLE
-    Get-CurrentRDPSessions
+    Get-RDPCurrentSessions
     Display all current RDP sessions.
 
 .EXAMPLE
-    Get-CurrentRDPSessions -ShowProcesses
+    Get-RDPCurrentSessions -ShowProcesses
     Show detailed information and processes for all active sessions.
 
 .EXAMPLE
-    Get-CurrentRDPSessions | Where-Object { $_.ID -eq 3 }
+    Get-RDPCurrentSessions | Where-Object { $_.ID -eq 3 }
     Filter output to show only session ID 3 using standard PowerShell.
 
 .EXAMPLE
-    Get-CurrentRDPSessions -Watch
+    Get-RDPCurrentSessions -Watch
     Continuously monitor RDP sessions with 5-second refresh.
 
 .EXAMPLE
-    Get-CurrentRDPSessions -Watch -RefreshInterval 10
+    Get-RDPCurrentSessions -Watch -RefreshInterval 10
     Monitor sessions with 10-second refresh interval.
 
 .EXAMPLE
-    Get-CurrentRDPSessions -Watch -LogPath "C:\Logs\RDP_Monitor"
+    Get-RDPCurrentSessions -Watch -LogPath "C:\Logs\RDP_Monitor"
     Monitor sessions with logging enabled. Changes are written to CSV for later analysis.
 
 .EXAMPLE
-    Get-CurrentRDPSessions -Watch -RefreshInterval 5 -LogPath "C:\SecurityLogs\RDP" -ShowProcesses
+    Get-RDPCurrentSessions -Watch -RefreshInterval 5 -LogPath "C:\SecurityLogs\RDP" -ShowProcesses
     Full monitoring with process tracking and change logging for incident response.
 
 .NOTES
     Author: Jan Tiedemann
-    Version: 1.0.8
     Requires: Administrator privileges
 
     Changelog v1.0.8:
@@ -315,7 +314,7 @@ function Get-CurrentRDPSessions {
         # ASCII Art Header - Use basic ASCII for PowerShell 5.1 compatibility
         Write-Host "`n" -NoNewline
         Write-Host ("=" * 53) -ForegroundColor Green
-        Write-Host "     ACTIVE RDP SESSIONS MONITOR v1.0.8            " -ForegroundColor White
+        Write-Host "     ACTIVE RDP SESSIONS MONITOR                    " -ForegroundColor White
         Write-Host ("=" * 53) -ForegroundColor Green
         Write-Host ""
         Write-Host "$(Get-Emoji 'computer') Computer: " -ForegroundColor Cyan -NoNewline

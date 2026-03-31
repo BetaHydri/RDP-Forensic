@@ -211,7 +211,7 @@ if ($sessionDurations) {
 Write-Host "SCENARIO 8: Monitor Current Active Sessions" -ForegroundColor Green
 Write-Host "Display currently active RDP sessions with process information"
 
-Get-CurrentRDPSessions -ShowProcesses
+Get-RDPCurrentSessions -ShowProcesses
 #>
 
 # ============================================================================
@@ -260,22 +260,22 @@ Write-Host "Press Ctrl+C to exit monitoring mode" -ForegroundColor Yellow
 Write-Host ""
 
 # Option 1: Basic real-time monitoring with 5-second refresh (default)
-Get-CurrentRDPSessions -Watch
+Get-RDPCurrentSessions -Watch
 
 # Option 2: Fast monitoring during incident response (3-second refresh)
-# Get-CurrentRDPSessions -Watch -RefreshInterval 3
+# Get-RDPCurrentSessions -Watch -RefreshInterval 3
 
 # Option 3: Detailed monitoring with processes shown (10-second refresh)
-# Get-CurrentRDPSessions -Watch -ShowProcesses -RefreshInterval 10
+# Get-RDPCurrentSessions -Watch -ShowProcesses -RefreshInterval 10
 
 # Option 4: Slower monitoring for long-term observation (30-second refresh)
-# Get-CurrentRDPSessions -Watch -RefreshInterval 30
+# Get-RDPCurrentSessions -Watch -RefreshInterval 30
 
 # Option 5: Monitor with change logging for forensic analysis
-# Get-CurrentRDPSessions -Watch -LogPath "C:\Logs\RDP_Monitor"
+# Get-RDPCurrentSessions -Watch -LogPath "C:\Logs\RDP_Monitor"
 
 # Option 6: Full monitoring - Watch, logging, and process tracking
-# Get-CurrentRDPSessions -Watch -RefreshInterval 5 -LogPath "C:\SecurityLogs\RDP" -ShowProcesses
+# Get-RDPCurrentSessions -Watch -RefreshInterval 5 -LogPath "C:\SecurityLogs\RDP" -ShowProcesses
 
 Write-Host "`nReal-time monitoring provides:" -ForegroundColor Yellow
 Write-Host "  - Automatic screen refresh at configured intervals" -ForegroundColor Gray
@@ -325,7 +325,7 @@ if ($suspiciousIPs) {
 
 # Get current sessions at time of investigation
 Write-Host "`n=== Current RDP Sessions ===" -ForegroundColor Yellow
-Get-CurrentRDPSessions -ShowProcesses
+Get-RDPCurrentSessions -ShowProcesses
 
 Write-Host "`nInvestigation complete. Results saved to: $investigationPath" -ForegroundColor Green
 #>

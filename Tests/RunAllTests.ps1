@@ -95,7 +95,7 @@ if ($CodeCoverage) {
     $pesterConfig.CodeCoverage.Enabled = $true
     $pesterConfig.CodeCoverage.Path = @(
         (Join-Path $RootPath "Get-RDPForensics.ps1"),
-        (Join-Path $RootPath "Get-CurrentRDPSessions.ps1")
+        (Join-Path $RootPath "Get-RDPCurrentSessions.ps1")
     )
     $pesterConfig.CodeCoverage.OutputPath = Join-Path $ReportPath "CodeCoverage.xml"
 }
