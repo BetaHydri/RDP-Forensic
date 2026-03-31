@@ -2,7 +2,7 @@
 
 ## Overview
 
-Version 1.0.6 adds comprehensive pre-authentication event tracking with the `-IncludeCredentialValidation` parameter. This feature collects both **Kerberos** (EventIDs 4768-4772) and **NTLM** (EventID 4776) authentication events to provide complete visibility into the authentication protocol flow.
+The `-IncludeCredentialValidation` parameter provides comprehensive pre-authentication event tracking. This feature collects both **Kerberos** (EventIDs 4768-4772) and **NTLM** (EventID 4776) authentication events to provide complete visibility into the authentication protocol flow.
 
 ## Why Track Pre-Authentication Events?
 
@@ -171,13 +171,13 @@ $sessions = Get-RDPForensics -IncludeCredentialValidation -GroupBySession -Start
 
 # Sessions that used NTLM (have 4776 events)
 $ntlmSessions = $sessions | Where-Object { 
-    ($_.AllEvents | Where-Object { $_.EventID -eq 4776 }).Count -gt 0 
+    ($_.Events | Where-Object { $_.EventID -eq 4776 }).Count -gt 0 
 }
 
 # Check if they also have Kerberos attempts
 foreach ($session in $ntlmSessions) {
-    $kerberosAttempts = ($session.AllEvents | Where-Object { $_.EventID -in 4768,4769,4771,4772 }).Count
-    $ntlmAttempts = ($session.AllEvents | Where-Object { $_.EventID -eq 4776 }).Count
+    $kerberosAttempts = ($session.Events | Where-Object { $_.EventID -in 4768,4769,4771,4772 }).Count
+    $ntlmAttempts = ($session.Events | Where-Object { $_.EventID -eq 4776 }).Count
     
     [PSCustomObject]@{
         SessionStart = $session.SessionStart
@@ -413,7 +413,6 @@ Use this feature when you need to understand not just **what** happened in an RD
 ---
 
 **See Also:**
-- [README.md](README.md) - Main documentation
+- [README.md](../README.md) - Main documentation
 - [QUICK_REFERENCE.md](QUICK_REFERENCE.md) - Command reference
 - [GETTING_STARTED.md](GETTING_STARTED.md) - Tutorial
-- [Release Notes v1.0.6](releases/v1.0.6.md) - Version details
