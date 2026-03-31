@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Increased code coverage from ~26% to ~74% with comprehensive mock-based
+  Pester tests for all internal parsing functions of `Get-RDPForensics`.
+
+## [2.1.0] - 2026-03-31
+
+### Changed
+
 - Renamed `Get-CurrentRDPSessions` to `Get-RDPCurrentSessions` to follow
   PowerShell verb-noun naming conventions and align with the module prefix
   pattern - **BREAKING CHANGE**.
