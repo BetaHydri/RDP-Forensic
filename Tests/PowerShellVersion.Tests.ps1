@@ -16,7 +16,7 @@
 BeforeAll {
     $script:RootPath = Split-Path -Parent $PSScriptRoot
     $script:MainScript = Join-Path (Join-Path (Join-Path $script:RootPath 'source') 'Public') 'Get-RDPForensics.ps1'
-    $script:SessionScript = Join-Path (Join-Path (Join-Path $script:RootPath 'source') 'Public') 'Get-CurrentRDPSessions.ps1'
+    $script:SessionScript = Join-Path (Join-Path (Join-Path $script:RootPath 'source') 'Public') 'Get-RDPCurrentSessions.ps1'
     $builtModule = Get-ChildItem -Path (Join-Path (Join-Path (Join-Path $script:RootPath 'output') 'module') 'RDP-Forensic') -Filter 'RDP-Forensic.psd1' -Recurse | Select-Object -First 1
     if ($builtModule)
     {
@@ -51,7 +51,7 @@ Describe "PowerShell Version Compatibility - Core Functionality" {
         }
 
         It "Session script should execute without errors" {
-            { Get-CurrentRDPSessions } | Should -Not -Throw
+            { Get-RDPCurrentSessions } | Should -Not -Throw
         }
 
         It "Module should import without errors" {
@@ -287,9 +287,9 @@ Describe "PowerShell Version Compatibility - Module System" {
             $command | Should -Not -BeNullOrEmpty
         }
 
-        It "Should export Get-CurrentRDPSessions command" {
+        It "Should export Get-RDPCurrentSessions command" {
             Import-Module RDP-Forensic -Force
-            $command = Get-Command Get-CurrentRDPSessions -ErrorAction SilentlyContinue
+            $command = Get-Command Get-RDPCurrentSessions -ErrorAction SilentlyContinue
             $command | Should -Not -BeNullOrEmpty
         }
     }

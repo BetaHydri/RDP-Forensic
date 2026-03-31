@@ -180,7 +180,7 @@ Import-Module .\RDP-Forensic.psm1
 
 # Now you can call the cmdlets
 Get-RDPForensics
-Get-CurrentRDPSessions
+Get-RDPCurrentSessions
 ```
 
 > **Note:** All examples in this documentation assume the module has been imported.
@@ -427,7 +427,7 @@ Get-RDPForensics -GroupBySession -LogonID 0x12345 -SessionID 4
 | **Broad investigation** | `-GroupBySession -StartDate (date)` |
 | **Export for forensics** | Add `-ExportPath "C:\path"` to any command |
 
-### Get-CurrentRDPSessions.ps1
+### Get-RDPCurrentSessions.ps1
 
 Real-time RDP session monitoring with comprehensive forensic properties.
 
@@ -451,37 +451,37 @@ Real-time RDP session monitoring with comprehensive forensic properties.
 
 ```powershell
 # Display all current sessions (one-time check)
-Get-CurrentRDPSessions
+Get-RDPCurrentSessions
 
 # Show processes for all sessions
-Get-CurrentRDPSessions -ShowProcesses
+Get-RDPCurrentSessions -ShowProcesses
 
 # Filter to specific session using PowerShell pipeline
-Get-CurrentRDPSessions | Where-Object { $_.ID -eq 3 }
+Get-RDPCurrentSessions | Where-Object { $_.ID -eq 3 }
 
 # Filter by username
-Get-CurrentRDPSessions | Where-Object { $_.Username -like "*admin*" }
+Get-RDPCurrentSessions | Where-Object { $_.Username -like "*admin*" }
 
 # REAL-TIME MONITORING: Auto-refresh every 5 seconds (default)
-Get-CurrentRDPSessions -Watch
+Get-RDPCurrentSessions -Watch
 
 # Monitor with custom 10-second refresh interval
-Get-CurrentRDPSessions -Watch -RefreshInterval 10
+Get-RDPCurrentSessions -Watch -RefreshInterval 10
 
 # Monitor with processes shown and 15-second refresh
-Get-CurrentRDPSessions -Watch -ShowProcesses -RefreshInterval 15
+Get-RDPCurrentSessions -Watch -ShowProcesses -RefreshInterval 15
 
 # Monitor during incident response with 3-second updates
-Get-CurrentRDPSessions -Watch -RefreshInterval 3
+Get-RDPCurrentSessions -Watch -RefreshInterval 3
 
 # CHANGE LOGGING: Monitor with automatic change logging for forensic analysis
-Get-CurrentRDPSessions -Watch -LogPath "C:\Logs\RDP_Monitor"
+Get-RDPCurrentSessions -Watch -LogPath "C:\Logs\RDP_Monitor"
 
 # Full monitoring - Watch mode with logging and process tracking
-Get-CurrentRDPSessions -Watch -RefreshInterval 5 -LogPath "C:\SecurityLogs\RDP" -ShowProcesses
+Get-RDPCurrentSessions -Watch -RefreshInterval 5 -LogPath "C:\SecurityLogs\RDP" -ShowProcesses
 
 # Single check with logging (no Watch mode)
-Get-CurrentRDPSessions -LogPath "C:\Logs\RDP_Audit"
+Get-RDPCurrentSessions -LogPath "C:\Logs\RDP_Audit"
 ```
 
 **Real-Time Monitoring:**
@@ -653,7 +653,7 @@ Get-RDPForensics -Username "admin" -StartDate (Get-Date).AddDays(-30) -ExportPat
 ### Real-time Monitoring
 ```powershell
 # Check current sessions
-Get-CurrentRDPSessions -ShowProcesses
+Get-RDPCurrentSessions -ShowProcesses
 ```
 
 ### Failed Logon Analysis (Brute Force Detection)
@@ -736,7 +736,7 @@ See [CHANGELOG.md](CHANGELOG.md) for complete version history.
 - PowerShell Parameter Sets (LogonID/SessionID mutual exclusivity)
 - SessionID filtering fix
 - Enhanced lifecycle tracking
-- Removed Get-CurrentRDPSessions -SessionID parameter
+- Removed Get-RDPCurrentSessions -SessionID parameter
 
 ## License
 

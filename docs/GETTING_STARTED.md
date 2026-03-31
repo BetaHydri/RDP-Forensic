@@ -10,7 +10,7 @@ A complete PowerShell-based RDP forensics toolkit with 5 files:
    - Supports filtering, exporting, and detailed reporting
    - ~700 lines of production-ready code
 
-### 2. **Get-CurrentRDPSessions.ps1** (Live Monitoring)
+### 2. **Get-RDPCurrentSessions.ps1** (Live Monitoring)
    - Quick view of active RDP sessions
    - Shows current users, session states, and processes
    - Useful for real-time monitoring
@@ -52,7 +52,7 @@ Get-RDPForensics
 ### Step 2: Check Current Sessions
 ```powershell
 # See who's currently connected
-Get-CurrentRDPSessions -ShowProcesses
+Get-RDPCurrentSessions -ShowProcesses
 ```
 
 ### Step 3: Generate a Report
