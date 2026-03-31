@@ -97,6 +97,11 @@ stages:
               targetPath: "$(buildFolderName)/$(testResultFolderName)/"
               artifactName: "$(testArtifactName)_$(psLabel)"
               parallel: true
+          - task: PublishCodeCoverageResults@2
+            displayName: "Publish Code Coverage"
+            condition: succeededOrFailed()
+            inputs:
+              summaryFileLocation: "$(buildFolderName)/$(testResultFolderName)/JaCoCo_coverage.xml"
 
       - job: Test_Integration
         displayName: "Integration"
