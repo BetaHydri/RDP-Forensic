@@ -68,7 +68,7 @@ Pester:
   Script:
     - tests
   Tag:
-  CodeCoverageThreshold: 0 # Disabled: many tests require admin (Security event log access)
+  CodeCoverageThreshold: 1 # Low threshold: generates JaCoCo for Codecov without failing build
   CodeCoverageOutputFile: JaCoCo_coverage.xml
   CodeCoverageOutputFileEncoding: ascii
   # Use this if code coverage should be merged from several pipeline test jobs.
