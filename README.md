@@ -63,18 +63,18 @@ full release to [PowerShell Gallery](https://www.powershellgallery.com/).
 This toolkit provides detailed analysis of RDP connections across all connection stages:
 
 1. **Network Connection** - Initial RDP connection attempts (EventID 1149)
-2. **Credential Submission** - Explicit credential usage (EventID 4648) - NEW in v1.0.8
+2. **Credential Submission** - Explicit credential usage (EventID 4648)
 3. **Authentication** - Successful and failed authentication (EventID 4624, 4625)
 4. **Logon** - Session establishment (EventID 21, 22)
 5. **Lock/Unlock** - Workstation lock state changes (EventID 4800, 4801)
 6. **Disconnect/Reconnect** - Session state changes (EventID 24, 25, 39, 40, 4778, 4779)
 7. **Logoff** - Session termination (EventID 23, 4634, 4647, 9009)
 
-## Scripts
+## Cmdlets
 
-### RDP-Forensic.psm1
+### Get-RDPForensics
 
-The main forensics analysis cmdlet (Get-RDPForensics) collects and analyzes RDP connection logs from multiple Windows Event Log sources.
+The main forensics analysis cmdlet collects and analyzes RDP connection logs from multiple Windows Event Log sources.
 
 **Features:**
 - Collects events from Security, TerminalServices, and System logs
@@ -169,28 +169,24 @@ The tool automatically detects your PowerShell version and adapts the output acc
 
 **Installation:**
 
-**You must import the module before using the cmdlets:**
-
 ```powershell
-# Navigate to the toolkit directory
-cd "C:\Path\To\RDP-Forensic"
+# Install from PowerShell Gallery (recommended)
+Install-Module -Name RDP-Forensic -Scope CurrentUser
 
-# Import the module (required)
-Import-Module .\RDP-Forensic.psm1
+# Or install system-wide (requires elevated prompt)
+Install-Module -Name RDP-Forensic
+
+# Import the module
+Import-Module RDP-Forensic
 
 # Now you can call the cmdlets
 Get-RDPForensics
 Get-RDPCurrentSessions
 ```
 
-> **Note:** All examples in this documentation assume the module has been imported.
+> **Note:** All examples in this documentation assume the module has been installed and imported.
 
 **Usage Examples:**
-
-> **⚠️ IMPORTANT:** Import the module first before running any commands:
-> ```powershell
-> Import-Module .\RDP-Forensic.psm1
-> ```
 
 ```powershell
 # Get all RDP events for today
@@ -211,18 +207,18 @@ Get-RDPForensics -SourceIP "fe80::1" -StartDate (Get-Date).AddDays(-7)
 # Export results to CSV
 Get-RDPForensics -StartDate (Get-Date).AddDays(-30) -ExportPath "C:\Reports\RDP"
 
-# **NEW v1.0.4** - Group events by session with correlation
+# Group events by session with correlation
 Get-RDPForensics -GroupBySession
 
-# **NEW v1.0.4** - Analyze complete session lifecycles with export
+# Analyze complete session lifecycles with export
 Get-RDPForensics -StartDate (Get-Date).AddDays(-7) -GroupBySession -ExportPath "C:\Reports\RDP"
 
-# **NEW v1.0.6** - Include Kerberos (4768-4772) and NTLM (4776) authentication events
+# Include Kerberos (4768-4772) and NTLM (4776) authentication events
 # ⚠️ NOTE: These events are on Domain Controller, not Terminal Server
 # Only shows events when running tool on DC
 Get-RDPForensics -IncludeCredentialValidation -GroupBySession
 
-# **NEW v1.0.8** - Deep dive forensic analysis with credential validation and Event 4648
+# Deep dive forensic analysis with credential validation and Event 4648
 # Filter by username, source IP, and specific LogonID for complete session correlation
 Get-RDPForensics -IncludeCredentialValidation -Username "AO-VPN\Administrator" -SourceIP "172.16.0.2" -LogonID 0x144533
 
@@ -427,7 +423,7 @@ Get-RDPForensics -GroupBySession -LogonID 0x12345 -SessionID 4
 | **Broad investigation** | `-GroupBySession -StartDate (date)` |
 | **Export for forensics** | Add `-ExportPath "C:\path"` to any command |
 
-### Get-RDPCurrentSessions.ps1
+### Get-RDPCurrentSessions
 
 Real-time RDP session monitoring with comprehensive forensic properties.
 
@@ -529,7 +525,7 @@ The tool now displays comprehensive session information:
 > - May not be available for disconnected sessions
 > - Most useful in watch mode for detecting inactive sessions
 
-> **Note:** Import the module first with `Import-Module .\RDP-Forensic.psm1` to use these commands directly.
+> **Note:** Import the module first with `Import-Module RDP-Forensic` to use these commands directly.
 
 ## Event IDs Reference
 
@@ -730,13 +726,6 @@ For large environments with extensive logs:
 ## Version History
 
 See [CHANGELOG.md](CHANGELOG.md) for complete version history.
-
-**Latest: v1.0.8** (2025-12-17)
-- Event 4648 support with time-based correlation
-- PowerShell Parameter Sets (LogonID/SessionID mutual exclusivity)
-- SessionID filtering fix
-- Enhanced lifecycle tracking
-- Removed Get-RDPCurrentSessions -SessionID parameter
 
 ## License
 

@@ -8,15 +8,15 @@
 
 .NOTES
     Author: Jan Tiedemann
-    Version: 1.0.8
     Uncomment the scenarios you want to run.
 #>
 
 # Ensure we're in the script directory
 Set-Location $PSScriptRoot
 
-Write-Host "`n=== RDP Forensics Toolkit - Usage Examples ===" -ForegroundColor CyanWrite-Host "\n⚠️  IMPORTANT: Import the module first!" -ForegroundColor Yellow
-Write-Host "   Import-Module .\RDP-Forensic.psm1\n" -ForegroundColor WhiteWrite-Host "Uncomment and run the scenarios that match your needs.`n" -ForegroundColor Yellow
+Write-Host "`n=== RDP Forensics Toolkit - Usage Examples ===" -ForegroundColor CyanWrite-Host "\n⚠️  IMPORTANT: Install and import the module first!" -ForegroundColor Yellow
+Write-Host "   Install-Module -Name RDP-Forensic -Scope CurrentUser" -ForegroundColor White
+Write-Host "   Import-Module RDP-Forensic\n" -ForegroundColor WhiteWrite-Host "Uncomment and run the scenarios that match your needs.`n" -ForegroundColor Yellow
 
 # ============================================================================
 # SCENARIO 1: Daily Security Review

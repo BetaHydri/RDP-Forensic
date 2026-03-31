@@ -2,46 +2,28 @@
 
 ## What You Have
 
-A complete PowerShell-based RDP forensics toolkit with 5 files:
+A PowerShell module published on the [PowerShell Gallery](https://www.powershellgallery.com/packages/RDP-Forensic/) providing two cmdlets:
 
-### 1. **Get-RDPForensics.ps1** (Main Script)
+### 1. **Get-RDPForensics** (Main Cmdlet)
    - Comprehensive RDP forensics analysis
    - Collects events from all relevant Windows logs
    - Supports filtering, exporting, and detailed reporting
-   - ~700 lines of production-ready code
 
-### 2. **Get-RDPCurrentSessions.ps1** (Live Monitoring)
+### 2. **Get-RDPCurrentSessions** (Live Monitoring)
    - Quick view of active RDP sessions
    - Shows current users, session states, and processes
    - Useful for real-time monitoring
 
-### 3. **Examples.ps1** (Usage Scenarios)
-   - 10 ready-to-use example scenarios
-   - Uncomment and run for your specific needs
-   - Covers daily monitoring, incident response, compliance, etc.
-
-### 4. **README.md** (Full Documentation)
-   - Complete guide with all parameters and options
-   - Event ID reference
-   - Troubleshooting tips
-   - Security best practices
-
-### 5. **QUICK_REFERENCE.md** (Quick Lookup)
-   - Event ID cheat sheet
-   - PowerShell one-liners
-   - Common investigation workflows
-   - Registry locations
-
 ## Quick Start (3 Steps)
 
-### Step 0: Import the Module (REQUIRED)
+### Step 0: Install and Import the Module
 ```powershell
-# Navigate to the toolkit directory and import the module
-cd "c:\Users\jantiede\OneDrive\Develop\PowerShell\Security\RDP-Forensic"
-Import-Module .\RDP-Forensic.psm1
-```
+# Install from PowerShell Gallery
+Install-Module -Name RDP-Forensic -Scope CurrentUser
 
-> **⚠️ IMPORTANT:** You must import the module before using any cmdlets. All examples below assume this step is completed.
+# Import the module
+Import-Module RDP-Forensic
+```
 
 ### Step 1: Test Basic Functionality
 ```powershell
@@ -84,7 +66,7 @@ $events = Get-RDPForensics -StartDate (Get-Date).AddDays(-1)
 $events | Where-Object {$_.EventID -eq 4625} | Group-Object SourceIP | Sort-Object Count -Descending
 ```
 
-### Include Credential Validation Events (NEW v1.0.6)
+### Include Credential Validation Events
 ```powershell
 # Track NTLM authentication attempts with time-based correlation
 Get-RDPForensics -IncludeCredentialValidation -GroupBySession

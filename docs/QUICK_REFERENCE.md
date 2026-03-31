@@ -1,8 +1,9 @@
 # RDP Forensics Quick Reference
 
-> **⚠️ PREREQUISITE:** Import the module before using any cmdlets:
+> **⚠️ PREREQUISITE:** Install and import the module before using any cmdlets:
 > ```powershell
-> Import-Module .\RDP-Forensic.psm1
+> Install-Module -Name RDP-Forensic -Scope CurrentUser
+> Import-Module RDP-Forensic
 > ```
 
 ## Event ID Quick Lookup
@@ -13,7 +14,7 @@
 CONNECTION ATTEMPTS
 ├─ 1149: Connection attempt (RemoteConnectionManager)
 
-CREDENTIAL SUBMISSION (NEW v1.0.8)
+CREDENTIAL SUBMISSION
 └─ 4648: Explicit credential usage (Security) - Logs credential submission BEFORE logon
 
 AUTHENTICATION
@@ -77,15 +78,15 @@ OUTBOUND
 
 ### Get Today's RDP Logons
 ```powershell
-Get-EventLog security -after (Get-date -hour 0 -minute 0 -second 0) | Where-Object {$_.eventid -eq 4624 -and $_.Message -match 'logon type:\s+(10)\s'} | Select-Object TimeGenerated, @{N='User';E={$_.ReplacementStrings[5]}}, @{N='SourceIP';E={$_.ReplacementStrings[18]}}
+Get-WinEvent -FilterHashtable @{LogName='Security'; Id=4624; StartTime=(Get-Date -Hour 0 -Minute 0 -Second 0)} | Where-Object {$_.Message -match 'Logon Type:\s+(10)\s'} | ForEach-Object { [xml]$xml=$_.ToXml(); [PSCustomObject]@{Time=$_.TimeCreated; User=$xml.Event.EventData.Data[5].'#text'; SourceIP=$xml.Event.EventData.Data[18].'#text'}} | Format-Table -AutoSize
 ```
 
 ### Get Failed RDP Attempts (Brute Force Detection)
 ```powershell
-Get-EventLog security -after (Get-date).AddHours(-24) | Where-Object {$_.eventid -eq 4625 -and $_.Message -match 'logon type:\s+(10)\s'} | Group-Object @{E={$_.ReplacementStrings[19]}} | Sort-Object Count -Descending
+Get-WinEvent -FilterHashtable @{LogName='Security'; Id=4625; StartTime=(Get-Date).AddHours(-24)} | Where-Object {$_.Message -match 'Logon Type:\s+(10)\s'} | ForEach-Object { [xml]$xml=$_.ToXml(); $xml.Event.EventData.Data[19].'#text' } | Group-Object | Sort-Object Count -Descending
 ```
 
-### Get Pre-Authentication Events (Kerberos & NTLM) - NEW v1.0.6
+### Get Pre-Authentication Events (Kerberos & NTLM)
 ```powershell
 # Using toolkit with time-based correlation (RECOMMENDED)
 Get-RDPForensics -IncludeCredentialValidation -GroupBySession
@@ -151,12 +152,12 @@ Get-WinEvent -FilterHashtable @{LogName='Security'; Id=4624; StartTime=$startDat
 
 ### Filter by User
 ```powershell
-Get-EventLog Security | Where-Object {$_.Message -match 'Account Name:\s+username'}
+Get-WinEvent -FilterHashtable @{LogName='Security'; Id=4624} | Where-Object {$_.Message -match 'Account Name:\s+username'}
 ```
 
 ### Filter by IP
 ```powershell
-Get-EventLog Security | Where-Object {$_.Message -match 'Source Network Address:\s+192.168.1.100'}
+Get-WinEvent -FilterHashtable @{LogName='Security'; Id=4624} | Where-Object {$_.Message -match 'Source Network Address:\s+192.168.1.100'}
 ```
 
 ## Audit Policy Requirements
@@ -195,7 +196,7 @@ auditpol /set /subcategory:"Credential Validation" /success:disable /failure:dis
 
 ### Export to CSV
 ```powershell
-Get-EventLog Security -After (Get-Date).AddDays(-7) | Where-Object {$_.EventId -eq 4624} | Export-Csv -Path "C:\RDP_Logons.csv" -NoTypeInformation
+Get-WinEvent -FilterHashtable @{LogName='Security'; Id=4624; StartTime=(Get-Date).AddDays(-7)} | Export-Csv -Path "C:\RDP_Logons.csv" -NoTypeInformation
 ```
 
 ### Export Event Log to EVTX
