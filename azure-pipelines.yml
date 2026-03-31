@@ -62,6 +62,14 @@ stages:
         pool:
           vmImage: 'windows-latest'
         timeoutInMinutes: 0
+        strategy:
+          matrix:
+            PS7:
+              usePwsh: true
+              psLabel: 'PS7'
+            PS51:
+              usePwsh: false
+              psLabel: 'PS51'
         steps:
           - task: DownloadPipelineArtifact@2
             displayName: 'Download Build Artifact'
@@ -75,66 +83,34 @@ stages:
             inputs:
               filePath: './build.ps1'
               arguments: "-Tasks test -PesterScript 'tests'"
-              pwsh: true
+              pwsh: $(usePwsh)
           - task: PublishTestResults@2
             displayName: 'Publish Test Results'
             condition: succeededOrFailed()
             inputs:
               testResultsFormat: 'NUnit'
               testResultsFiles: '$(buildFolderName)/$(testResultFolderName)/NUnit*.xml'
-              # If several pipeline jobs are generating test result, consider renaming this title:
-              testRunTitle: 'Unit'
+              testRunTitle: 'Unit $(psLabel)'
           - task: PublishPipelineArtifact@1
             displayName: 'Publish Test Artifact'
             inputs:
               targetPath: '$(buildFolderName)/$(testResultFolderName)/'
-              artifactName: $(testArtifactName)
-              # If several pipeline jobs are generating code coverage, replace above with this:
-              #artifactName: 'CodeCoverageWindows' # Can be any, in the pipeline, unique name
+              artifactName: '$(testArtifactName)_$(psLabel)'
               parallel: true
-
-      # If several pipeline jobs should run unit tests, uncomment this:
-      ## If several pipeline jobs are generating test result consider renaming this:
-      #- job: Test_Unit_Linux
-      #  displayName: 'Unit Linux'
-      #  pool:
-      #    vmImage: 'ubuntu-latest'
-      #  timeoutInMinutes: 0
-      #  steps:
-      #    - task: DownloadPipelineArtifact@2
-      #      displayName: 'Download Build Artifact'
-      #      inputs:
-      #        buildType: 'current'
-      #        artifactName: $(buildArtifactName)
-      #        targetPath: '$(Build.SourcesDirectory)/$(buildFolderName)'
-      #    - task: PowerShell@2
-      #      name: test
-      #      displayName: 'Run Unit Test'
-      #      inputs:
-      #        filePath: './build.ps1'
-      #        arguments: "-Tasks test -PesterScript 'tests/Unit'"
-      #        pwsh: true
-      #    - task: PublishTestResults@2
-      #      displayName: 'Publish Test Results'
-      #      condition: succeededOrFailed()
-      #      inputs:
-      #        testResultsFormat: 'NUnit'
-      #        testResultsFiles: '$(buildFolderName)/$(testResultFolderName)/NUnit*.xml'
-      #        # If several pipeline jobs are generating test result consider renaming this:
-      #        testRunTitle: 'Unit Linux'
-      #    - task: PublishPipelineArtifact@1
-      #      displayName: 'Publish Test Artifact'
-      #      inputs:
-      #        targetPath: '$(buildFolderName)/$(testResultFolderName)/'
-      #        # If several pipeline jobs are generating code coverage, consider renaming this:
-      #        artifactName: 'CodeCoverageLinux' # Can be any, in the pipeline, unique name
-      #        parallel: true
 
       - job: Test_Integration
         displayName: 'Integration'
         pool:
           vmImage: 'windows-latest'
         timeoutInMinutes: 0
+        strategy:
+          matrix:
+            PS7:
+              usePwsh: true
+              psLabel: 'PS7'
+            PS51:
+              usePwsh: false
+              psLabel: 'PS51'
         steps:
           - task: DownloadPipelineArtifact@2
             displayName: 'Download Build Artifact'
@@ -155,14 +131,14 @@ stages:
             inputs:
               filePath: './build.ps1'
               arguments: "-Tasks test -CodeCoverageThreshold 0 -PesterScript 'tests/Integration.Tests.ps1'"
-              pwsh: true
+              pwsh: $(usePwsh)
           - task: PublishTestResults@2
             displayName: 'Publish Test Results'
             condition: succeededOrFailed()
             inputs:
               testResultsFormat: 'NUnit'
               testResultsFiles: '$(buildFolderName)/$(testResultFolderName)/NUnit*.xml'
-              testRunTitle: 'Integration'
+              testRunTitle: 'Integration $(psLabel)'
 
       - job: Code_Coverage
         displayName: 'Publish Code Coverage'
@@ -184,27 +160,11 @@ stages:
               artifactName: $(buildArtifactName)
               targetPath: '$(Build.SourcesDirectory)/$(buildFolderName)'
           - task: DownloadPipelineArtifact@2
-            # If several pipeline jobs are generating code coverage, consider renaming this display name:
-            displayName: 'Download Test Artifact'
+            displayName: 'Download Test Artifact (PS7)'
             inputs:
               buildType: 'current'
-              # If several pipeline jobs are generating code coverage, set the correct artifact name:
-              artifactName: $(testArtifactName)
+              artifactName: '$(testArtifactName)_PS7'
               targetPath: '$(Build.SourcesDirectory)/$(buildFolderName)/$(testResultFolderName)'
-          # If several pipeline jobs are generating code coverage, uncomment these tasks:
-          #- task: DownloadPipelineArtifact@2
-          #  displayName: 'Download Test Artifact Linux'
-          #  inputs:
-          #    buildType: 'current'
-          #    artifactName: 'CodeCoverageLinux'
-          #    targetPath: '$(Build.SourcesDirectory)/$(buildFolderName)/$(testResultFolderName)'
-          #- task: PowerShell@2 # Merges the code coverage files.
-          #  name: merge
-          #  displayName: 'Merge Code Coverage files'
-          #  inputs:
-          #    filePath: './build.ps1'
-          #    arguments: '-tasks merge'
-          #    pwsh: true
           - task: PublishCodeCoverageResults@1
             displayName: 'Publish Code Coverage to Azure DevOps'
             inputs:
