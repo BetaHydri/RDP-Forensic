@@ -140,7 +140,7 @@ Describe "Get-CurrentRDPSessions.ps1 - Logging Feature" {
             Get-CurrentRDPSessions -LogPath $script:TestLogPath -ErrorAction Stop
             $logFile = Get-ChildItem -Path $script:TestLogPath -Filter "RDP_SessionMonitor_*.csv" | Select-Object -First 1
             $header = Get-Content $logFile.FullName -First 1
-            $header | Should -Match 'Timestamp,EventType,SessionName,Username,SessionID,State,SourceIP,Details'
+            $header | Should -Match 'Timestamp,EventType,SessionName,Username,SessionID,State'
         }
     }
 

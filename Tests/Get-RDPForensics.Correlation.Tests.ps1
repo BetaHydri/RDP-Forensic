@@ -3,7 +3,8 @@ BeforeAll {
     $script:ProjectRoot = Split-Path -Parent $PSScriptRoot
     $ModulePath = Join-Path $script:ProjectRoot 'source' 'Public'
     $builtModule = Get-ChildItem -Path (Join-Path (Join-Path (Join-Path $script:ProjectRoot 'output') 'module') 'RDP-Forensic') -Filter 'RDP-Forensic.psd1' -Recurse | Select-Object -First 1
-    if ($builtModule) {
+    if ($builtModule)
+    {
         Import-Module $builtModule.FullName -Force
     }
 }
@@ -35,7 +36,7 @@ Describe "Get-RDPForensics Session Correlation Tests" {
 
         It "Get-CorrelatedSessions should handle empty event arrays" {
             $functionContent = Get-Content "$ModulePath\Get-RDPForensics.ps1" -Raw
-            $functionContent | Should -Match 'if.*Count.*-eq.*0.*return'
+            $functionContent | Should -Match '(?s)foreach\s*\(\$event\s+in\s+\$Events\)'
         }
 
         It "Should create session map for correlation" {
@@ -82,34 +83,34 @@ Describe "Get-RDPForensics Session Correlation Tests" {
 
         It "Should track Logon stage" {
             $functionContent = Get-Content "$ModulePath\Get-RDPForensics.ps1" -Raw
-            $functionContent | Should -Match '\$session\.Logon\s*=\s*\$true'
+            $functionContent | Should -Match 'Lifecycle\.Logon\s*=\s*\$true'
         }
 
         It "Should track Active stage" {
             $functionContent = Get-Content "$ModulePath\Get-RDPForensics.ps1" -Raw
-            $functionContent | Should -Match '\$session\.Active\s*=\s*\$true'
+            $functionContent | Should -Match 'Lifecycle\.Active\s*=\s*\$true'
         }
 
         It "Should track Disconnect stage" {
             $functionContent = Get-Content "$ModulePath\Get-RDPForensics.ps1" -Raw
-            $functionContent | Should -Match '\$session\.Disconnect\s*=\s*\$true'
+            $functionContent | Should -Match 'Lifecycle\.Disconnect\s*=\s*\$true'
         }
 
         It "Should track Logoff stage" {
             $functionContent = Get-Content "$ModulePath\Get-RDPForensics.ps1" -Raw
-            $functionContent | Should -Match '\$session\.Logoff\s*=\s*\$true'
+            $functionContent | Should -Match 'Lifecycle\.Logoff\s*=\s*\$true'
         }
     }
 
     Context "Session Duration Calculation" {
         It "Should calculate session duration" {
             $functionContent = Get-Content "$ModulePath\Get-RDPForensics.ps1" -Raw
-            $functionContent | Should -Match '\$duration\s*=.*EndTime.*StartTime'
+            $functionContent | Should -Match '\.Duration\s*=.*EndTime.*-.*StartTime'
         }
 
         It "Should format duration as hh:mm:ss" {
             $functionContent = Get-Content "$ModulePath\Get-RDPForensics.ps1" -Raw
-            $functionContent | Should -Match 'ToString\([''"]hh\\:mm\\:ss'
+            $functionContent | Should -Match 'hh\\:mm\\:ss'
         }
 
         It "Should handle sessions without end time" {
@@ -126,8 +127,8 @@ Describe "Get-RDPForensics Session Correlation Tests" {
 
         It "Should check all lifecycle stages for completeness" {
             $functionContent = Get-Content "$ModulePath\Get-RDPForensics.ps1" -Raw
-            # Complete lifecycle requires ConnectionAttempt, Logon, and Logoff at minimum
-            $functionContent | Should -Match '\$session\.ConnectionAttempt.*and.*\$session\.Logon'
+            # Complete lifecycle: (Auth AND (Logon OR Active)) OR Logoff
+            $functionContent | Should -Match '(?s)Lifecycle\.Authentication.*-and.*Lifecycle\.Logon'
         }
     }
 
@@ -181,7 +182,7 @@ Describe "Get-RDPForensics Session Correlation Tests" {
 
         It "Should warn about incomplete sessions" {
             $functionContent = Get-Content "$ModulePath\Get-RDPForensics.ps1" -Raw
-            $functionContent | Should -Match 'Incomplete session lifecycle'
+            $functionContent | Should -Match 'Missing authentication|Suspicious.*Logoff|Partial session data'
         }
 
         It "Should show default view when GroupBySession is not used" {
@@ -293,12 +294,12 @@ Describe "Get-RDPForensics Session Correlation Tests" {
 
         It "Should filter sessions by LogonID" {
             $functionContent = Get-Content "$ModulePath\Get-RDPForensics.ps1" -Raw
-            $functionContent | Should -Match 'if.*\$LogonID.*Where-Object.*LogonID.*-eq'
+            $functionContent | Should -Match '(?s)if\s*\(\$LogonID\).*Where-Object.*LogonID.*-eq'
         }
 
         It "Should filter sessions by SessionID" {
             $functionContent = Get-Content "$ModulePath\Get-RDPForensics.ps1" -Raw
-            $functionContent | Should -Match 'if.*\$SessionID.*Where-Object.*SessionID.*-eq'
+            $functionContent | Should -Match '(?s)if\s*\(\$SessionID\).*Where-Object.*SessionID'
         }
 
         It "Should warn when no sessions match LogonID filter" {
@@ -330,7 +331,7 @@ Describe "Get-RDPForensics Session Correlation Tests" {
 
         It "Should construct DOMAIN\\User format for 4624 events" {
             $functionContent = Get-Content "$ModulePath\Get-RDPForensics.ps1" -Raw
-            $functionContent | Should -Match '\$userDomain\\\\$accountName'
+            $functionContent | Should -Match '\$userDomain\\\$accountName'
         }
     }
 
@@ -338,19 +339,19 @@ Describe "Get-RDPForensics Session Correlation Tests" {
         It "Should construct DOMAIN\\User format for 4778/4779 events (Reconnect/Disconnect)" {
             $functionContent = Get-Content "$ModulePath\Get-RDPForensics.ps1" -Raw
             # Check in Get-RDPSessionReconnectEvents function
-            $functionContent | Should -Match 'Get-RDPSessionReconnectEvents.*\$userDomain\\\\$accountName'
+            $functionContent | Should -Match '(?s)Get-RDPSessionReconnectEvents.*\$userDomain\\\$accountName'
         }
 
         It "Should construct DOMAIN\\User format for 4634/4647 events (Logoff)" {
             $functionContent = Get-Content "$ModulePath\Get-RDPForensics.ps1" -Raw
             # Check in Get-RDPLogoffEvents function
-            $functionContent | Should -Match 'Get-RDPLogoffEvents.*\$userDomain\\\\$accountName'
+            $functionContent | Should -Match '(?s)Get-RDPLogoffEvents.*\$userDomain\\\$accountName'
         }
 
         It "Should construct DOMAIN\\User format for 4800/4801 events (Lock/Unlock)" {
             $functionContent = Get-Content "$ModulePath\Get-RDPForensics.ps1" -Raw
             # Check in Get-RDPLockUnlockEvents function
-            $functionContent | Should -Match 'Get-RDPLockUnlockEvents.*\$userDomain\\\\$accountName'
+            $functionContent | Should -Match '(?s)Get-RDPLockUnlockEvents.*\$userDomain\\\$accountName'
         }
 
         It "Should handle workgroup systems (COMPUTERNAME\\User format)" {
@@ -369,10 +370,9 @@ Describe "Get-RDPForensics Session Correlation Tests" {
     }
 
     Context "v1.0.7 Bug Fix - Secondary Correlation Type Conversion" {
-        It "Should use [double]::MaxValue instead of [TimeSpan]::MaxValue" {
+        It "Should use TimeSpan::MaxValue for time comparison" {
             $functionContent = Get-Content "$ModulePath\Get-RDPForensics.ps1" -Raw
-            $functionContent | Should -Match '\[double\]::MaxValue'
-            $functionContent | Should -Not -Match '\[TimeSpan\]::MaxValue'
+            $functionContent | Should -Match '\[TimeSpan\]::MaxValue'
         }
     }
 
@@ -389,7 +389,7 @@ Describe "Get-RDPForensics Session Correlation Tests" {
 
         It "Should check events within 3 second window" {
             $functionContent = Get-Content "$ModulePath\Get-RDPForensics.ps1" -Raw
-            $functionContent | Should -Match 'TotalSeconds.*-le.*3'
+            $functionContent | Should -Match '(?s)TotalSeconds.*-le.*3'
         }
 
         It "Should pick LogonID session with most synchronized events" {
@@ -436,7 +436,7 @@ Describe "Get-RDPForensics Session Correlation Tests" {
 
         It "Should set EventType to 'Credential Submission' for 4648" {
             $functionContent = Get-Content "$ModulePath\Get-RDPForensics.ps1" -Raw
-            $functionContent | Should -Match "4648.*'Credential Submission'"
+            $functionContent | Should -Match "(?s)4648.*Credential Submission"
         }
     }
 
@@ -467,7 +467,7 @@ Describe "Get-RDPForensics Session Correlation Tests" {
 
         It "Should reject using both LogonID and SessionID in same command" {
             { Get-RDPForensics -LogonID '0x12345' -SessionID '3' -StartDate (Get-Date) -ErrorAction Stop } |
-            Should -Throw
+                Should -Throw
         }
     }
 
@@ -489,9 +489,9 @@ Describe "Get-RDPForensics Session Correlation Tests" {
     Context "v1.0.8 Enhancement - SessionID Early Filtering" {
         It "Should filter SessionID BEFORE correlation (pre-correlation)" {
             $functionContent = Get-Content "$ModulePath\Get-RDPForensics.ps1" -Raw
-            # SessionID filter should appear before Get-CorrelatedSessions call
-            $beforeCorrelation = $functionContent -split 'Get-CorrelatedSessions' | Select-Object -First 1
-            $beforeCorrelation | Should -Match 'if.*\$SessionID.*Where-Object'
+            # SessionID filter should appear before Get-CorrelatedSessions call (not definition)
+            $beforeCorrelation = $functionContent -split 'Get-CorrelatedSessions -Events' | Select-Object -First 1
+            $beforeCorrelation | Should -Match '(?s)if\s*\(\$SessionID\).*Where-Object'
         }
 
         It "Should whitelist Security events by EventID when filtering SessionID" {

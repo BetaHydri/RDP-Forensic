@@ -28,6 +28,7 @@ BeforeAll {
     $script:PSMajorVersion = $PSVersionTable.PSVersion.Major
     $script:IsPS7Plus = $script:PSMajorVersion -ge 7
     $script:IsPS5 = $script:PSMajorVersion -eq 5
+    $script:IsAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 }
 
 Describe "PowerShell Version Compatibility - Core Functionality" {
@@ -83,7 +84,7 @@ Describe "PowerShell Version Compatibility - Emoji and Character Support" {
 
         It "Should have fallback characters for PowerShell 5.1" {
             $content = Get-Content $script:MainScript -Raw
-            $content | Should -Match 'else.*{.*\[char\]0x'
+            $content | Should -Match '(?s)else\s*\{[^}]*\[char\]0x'
         }
 
         It "Should have emoji definitions for PowerShell 7+" {
@@ -138,7 +139,7 @@ Describe "PowerShell Version Compatibility - Emoji and Character Support" {
 Describe "PowerShell Version Compatibility - Event Collection" {
 
     Context "Get-WinEvent Compatibility" {
-        It "Should access Security log on both versions" {
+        It "Should access Security log on both versions" -Skip:(-not $script:IsAdmin) {
             { Get-WinEvent -LogName Security -MaxEvents 1 -ErrorAction Stop } | Should -Not -Throw
         }
 
@@ -152,7 +153,7 @@ Describe "PowerShell Version Compatibility - Event Collection" {
             } | Should -Not -Throw
         }
 
-        It "Should handle XML parsing on both versions" {
+        It "Should handle XML parsing on both versions" -Skip:(-not $script:IsAdmin) {
             $event = Get-WinEvent -LogName Security -MaxEvents 1 -ErrorAction SilentlyContinue
             if ($event)
             {
@@ -220,18 +221,18 @@ Describe "PowerShell Version Compatibility - Export Functionality" {
             }
         }
 
-        It "Should export CSV with UTF-8 encoding" {
+        It "Should export CSV with UTF-8 encoding" -Skip:(-not $script:IsAdmin) {
             Get-RDPForensics -StartDate (Get-Date).AddHours(-1) -ExportPath $script:TestExportPath
 
-            $csvFile = Get-ChildItem -Path $script:TestExportPath -Filter "*.csv" | Select-Object -First 1
+            $csvFile = Get-ChildItem -Path $script:TestExportPath -Filter "*.csv" -ErrorAction SilentlyContinue | Select-Object -First 1
             if ($csvFile)
             {
                 { Import-Csv $csvFile.FullName } | Should -Not -Throw
             }
         }
 
-        It "Should create text files readable on both versions" {
-            $txtFile = Get-ChildItem -Path $script:TestExportPath -Filter "*.txt" | Select-Object -First 1
+        It "Should create text files readable on both versions" -Skip:(-not $script:IsAdmin) {
+            $txtFile = Get-ChildItem -Path $script:TestExportPath -Filter "*.txt" -ErrorAction SilentlyContinue | Select-Object -First 1
             if ($txtFile)
             {
                 { Get-Content $txtFile.FullName -Raw } | Should -Not -Throw
