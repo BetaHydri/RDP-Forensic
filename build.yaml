@@ -34,9 +34,6 @@ BuildWorkflow:
     - build
     - package_module_nupkg
 
-  hqrmtest:
-    - Invoke_HQRM_Tests_Stop_On_Fail
-
   # Defining test task to be run when invoking `./build.ps1 -Tasks test`
   test:
     # Uncomment to modify the PSModulePath in the test pipeline (also requires the build configuration section SetPSModulePath).

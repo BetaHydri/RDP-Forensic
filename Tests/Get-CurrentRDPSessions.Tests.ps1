@@ -11,12 +11,16 @@
 #>
 
 #Requires -Modules Pester
-#Requires -RunAsAdministrator
 
 BeforeAll {
-    $script:ScriptPath = Join-Path $PSScriptRoot ".." "Get-CurrentRDPSessions.ps1"
-    # Dot source the function
-    . $script:ScriptPath
+    $script:ProjectRoot = Split-Path -Parent $PSScriptRoot
+    $script:ScriptPath = Join-Path $script:ProjectRoot 'source' 'Public' 'Get-CurrentRDPSessions.ps1'
+
+    # Import the built module
+    $builtModule = Get-ChildItem -Path (Join-Path $script:ProjectRoot 'output' 'module' 'RDP-Forensic') -Filter 'RDP-Forensic.psd1' -Recurse | Select-Object -First 1
+    if ($builtModule) {
+        Import-Module $builtModule.FullName -Force
+    }
 }
 
 Describe "Get-CurrentRDPSessions.ps1 - Script Validation" {

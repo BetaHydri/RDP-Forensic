@@ -12,13 +12,16 @@
 #>
 
 #Requires -Modules Pester
-#Requires -RunAsAdministrator
 
 BeforeAll {
     $script:RootPath = Split-Path -Parent $PSScriptRoot
-    $script:MainScript = Join-Path $script:RootPath "Get-RDPForensics.ps1"
-    $script:SessionScript = Join-Path $script:RootPath "Get-CurrentRDPSessions.ps1"
-    $script:ModulePath = Join-Path $script:RootPath "RDP-Forensic.psm1"
+    $script:MainScript = Join-Path $script:RootPath 'source' 'Public' 'Get-RDPForensics.ps1'
+    $script:SessionScript = Join-Path $script:RootPath 'source' 'Public' 'Get-CurrentRDPSessions.ps1'
+    $builtModule = Get-ChildItem -Path (Join-Path $script:RootPath 'output' 'module' 'RDP-Forensic') -Filter 'RDP-Forensic.psd1' -Recurse | Select-Object -First 1
+    if ($builtModule) {
+        Import-Module $builtModule.FullName -Force
+        $script:ModulePath = Split-Path $builtModule.FullName
+    }
     
     # Detect PowerShell version
     $script:PSMajorVersion = $PSVersionTable.PSVersion.Major
@@ -42,15 +45,15 @@ Describe "PowerShell Version Compatibility - Core Functionality" {
     
     Context "Script Execution on $($PSVersionTable.PSVersion)" {
         It "Main script should execute without errors" {
-            { & $script:MainScript -StartDate (Get-Date).AddHours(-1) } | Should -Not -Throw
+            { Get-RDPForensics -StartDate (Get-Date).AddHours(-1) } | Should -Not -Throw
         }
         
         It "Session script should execute without errors" {
-            { & $script:SessionScript } | Should -Not -Throw
+            { Get-CurrentRDPSessions } | Should -Not -Throw
         }
         
         It "Module should import without errors" {
-            { Import-Module $script:ModulePath -Force -ErrorAction Stop } | Should -Not -Throw
+            { Import-Module RDP-Forensic -Force -ErrorAction Stop } | Should -Not -Throw
         }
     }
 }
@@ -149,7 +152,7 @@ Describe "PowerShell Version Compatibility - Event Collection" {
     
     Context "Event Parsing Compatibility" {
         It "Should parse event messages correctly" {
-            $results = & $script:MainScript -StartDate (Get-Date).AddHours(-1)
+            $results = Get-RDPForensics -StartDate (Get-Date).AddHours(-1)
             if ($results.Count -gt 0) {
                 $results[0].PSObject.Properties.Name | Should -Contain 'TimeCreated'
                 $results[0].PSObject.Properties.Name | Should -Contain 'EventID'
@@ -163,26 +166,26 @@ Describe "PowerShell Version Compatibility - Parameter Handling" {
     
     Context "Switch Parameters" {
         It "Should handle -GroupBySession switch" {
-            { & $script:MainScript -GroupBySession -StartDate (Get-Date).AddHours(-1) } | Should -Not -Throw
+            { Get-RDPForensics -GroupBySession -StartDate (Get-Date).AddHours(-1) } | Should -Not -Throw
         }
         
         It "Should handle -IncludeOutbound switch" {
-            { & $script:MainScript -IncludeOutbound -StartDate (Get-Date).AddHours(-1) } | Should -Not -Throw
+            { Get-RDPForensics -IncludeOutbound -StartDate (Get-Date).AddHours(-1) } | Should -Not -Throw
         }
         
         It "Should handle -IncludeCredentialValidation switch" {
-            { & $script:MainScript -IncludeCredentialValidation -StartDate (Get-Date).AddHours(-1) } | Should -Not -Throw
+            { Get-RDPForensics -IncludeCredentialValidation -StartDate (Get-Date).AddHours(-1) } | Should -Not -Throw
         }
         
         It "Should handle combined switches" {
-            { & $script:MainScript -GroupBySession -IncludeCredentialValidation -StartDate (Get-Date).AddHours(-1) } | 
+            { Get-RDPForensics -GroupBySession -IncludeCredentialValidation -StartDate (Get-Date).AddHours(-1) } | 
                 Should -Not -Throw
         }
     }
     
     Context "DateTime Parameters" {
         It "Should handle DateTime objects" {
-            { & $script:MainScript -StartDate (Get-Date).AddDays(-1) -EndDate (Get-Date) } | Should -Not -Throw
+            { Get-RDPForensics -StartDate (Get-Date).AddDays(-1) -EndDate (Get-Date) } | Should -Not -Throw
         }
     }
 }
@@ -204,7 +207,7 @@ Describe "PowerShell Version Compatibility - Export Functionality" {
         }
         
         It "Should export CSV with UTF-8 encoding" {
-            & $script:MainScript -StartDate (Get-Date).AddHours(-1) -ExportPath $script:TestExportPath
+            Get-RDPForensics -StartDate (Get-Date).AddHours(-1) -ExportPath $script:TestExportPath
             
             $csvFile = Get-ChildItem -Path $script:TestExportPath -Filter "*.csv" | Select-Object -First 1
             if ($csvFile) {
@@ -228,7 +231,7 @@ Describe "PowerShell Version Compatibility - Error Handling" {
             $originalEAP = $ErrorActionPreference
             { 
                 $ErrorActionPreference = 'Continue'
-                & $script:MainScript -StartDate (Get-Date).AddHours(-1) | Out-Null
+                Get-RDPForensics -StartDate (Get-Date).AddHours(-1) | Out-Null
                 $ErrorActionPreference = $originalEAP
             } | Should -Not -Throw
         }
@@ -248,7 +251,7 @@ Describe "PowerShell Version Compatibility - Performance" {
     Context "Execution Time Comparison" {
         It "Should complete within reasonable time on $($PSVersionTable.PSVersion)" {
             $startTime = Get-Date
-            & $script:MainScript -StartDate (Get-Date).AddHours(-1) | Out-Null
+            Get-RDPForensics -StartDate (Get-Date).AddHours(-1) | Out-Null
             $duration = (Get-Date) - $startTime
             
             Write-Host "Execution time on PS $($PSVersionTable.PSVersion): $($duration.TotalSeconds) seconds" -ForegroundColor Cyan
@@ -261,17 +264,17 @@ Describe "PowerShell Version Compatibility - Module System" {
     
     Context "Module Import" {
         It "Should import module on $($PSVersionTable.PSVersion)" {
-            { Import-Module $script:ModulePath -Force } | Should -Not -Throw
+            { Import-Module RDP-Forensic -Force } | Should -Not -Throw
         }
         
         It "Should export Get-RDPForensics command" {
-            Import-Module $script:ModulePath -Force
+            Import-Module RDP-Forensic -Force
             $command = Get-Command Get-RDPForensics -ErrorAction SilentlyContinue
             $command | Should -Not -BeNullOrEmpty
         }
         
         It "Should export Get-CurrentRDPSessions command" {
-            Import-Module $script:ModulePath -Force
+            Import-Module RDP-Forensic -Force
             $command = Get-Command Get-CurrentRDPSessions -ErrorAction SilentlyContinue
             $command | Should -Not -BeNullOrEmpty
         }

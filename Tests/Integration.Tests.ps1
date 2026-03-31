@@ -11,12 +11,13 @@
 #>
 
 #Requires -Modules Pester
-#Requires -RunAsAdministrator
 
 BeforeAll {
     $script:RootPath = Split-Path -Parent $PSScriptRoot
-    $script:MainScript = Join-Path $script:RootPath "Get-RDPForensics.ps1"
-    $script:SessionScript = Join-Path $script:RootPath "Get-CurrentRDPSessions.ps1"
+    $builtModule = Get-ChildItem -Path (Join-Path $script:RootPath 'output' 'module' 'RDP-Forensic') -Filter 'RDP-Forensic.psd1' -Recurse | Select-Object -First 1
+    if ($builtModule) {
+        Import-Module $builtModule.FullName -Force
+    }
     $script:TestOutputPath = Join-Path $PSScriptRoot "IntegrationTestOutput"
     
     if (-not (Test-Path $script:TestOutputPath)) {
@@ -34,7 +35,7 @@ Describe "Integration - Complete Forensic Workflow" {
     
     Context "Daily Security Review Scenario" {
         It "Should collect today's RDP activity" {
-            $results = & $script:MainScript
+            $results = Get-RDPForensics
             $results | Should -Not -BeNullOrEmpty -Because "Should return array (even if empty)"
         }
     }
@@ -46,7 +47,7 @@ Describe "Integration - Complete Forensic Workflow" {
         }
         
         It "Should collect events around incident time" {
-            $results = & $script:MainScript -StartDate $script:IncidentDate -ExportPath $script:InvestigationPath
+            $results = Get-RDPForensics -StartDate $script:IncidentDate -ExportPath $script:InvestigationPath
             $script:InvestigationPath | Should -Exist
         }
         
@@ -64,7 +65,7 @@ Describe "Integration - Complete Forensic Workflow" {
         
         It "Should generate weekly compliance report" {
             $startDate = (Get-Date).AddDays(-7)
-            & $script:MainScript -StartDate $startDate -ExportPath $script:CompliancePath
+            Get-RDPForensics -StartDate $startDate -ExportPath $script:CompliancePath
             $script:CompliancePath | Should -Exist
         }
         
@@ -79,11 +80,11 @@ Describe "Integration - Complete Forensic Workflow" {
     
     Context "Real-time Monitoring Scenario" {
         It "Should display current sessions" {
-            { & $script:SessionScript } | Should -Not -Throw
+            { Get-CurrentRDPSessions } | Should -Not -Throw
         }
         
         It "Should show session details with processes" {
-            { & $script:SessionScript -ShowProcesses } | Should -Not -Throw
+            { Get-CurrentRDPSessions -ShowProcesses } | Should -Not -Throw
         }
     }
 }
@@ -92,8 +93,8 @@ Describe "Integration - Combined Script Usage" {
     
     Context "Historical Analysis + Current State" {
         It "Should analyze past events and current sessions together" {
-            $historical = & $script:MainScript -StartDate (Get-Date).AddHours(-24)
-            { & $script:SessionScript } | Should -Not -Throw
+            $historical = Get-RDPForensics -StartDate (Get-Date).AddHours(-24)
+            { Get-CurrentRDPSessions } | Should -Not -Throw
             
             # Both should complete without error
             $historical | Should -Not -BeNullOrEmpty
@@ -106,7 +107,7 @@ Describe "Integration - Export Format Compatibility" {
     Context "CSV Import Validation" {
         BeforeAll {
             $script:ExportTestPath = Join-Path $script:TestOutputPath "CSVTest"
-            & $script:MainScript -StartDate (Get-Date).AddHours(-1) -ExportPath $script:ExportTestPath
+            Get-RDPForensics -StartDate (Get-Date).AddHours(-1) -ExportPath $script:ExportTestPath
         }
         
         It "Exported CSV should be importable" {
@@ -134,7 +135,7 @@ Describe "Integration - Performance Under Load" {
     Context "Large Date Range Processing" {
         It "Should handle 30-day analysis within 2 minutes" {
             $startTime = Get-Date
-            & $script:MainScript -StartDate (Get-Date).AddDays(-30) | Out-Null
+            Get-RDPForensics -StartDate (Get-Date).AddDays(-30) | Out-Null
             $duration = (Get-Date) - $startTime
             $duration.TotalMinutes | Should -BeLessThan 2
         }

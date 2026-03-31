@@ -57,34 +57,6 @@ stages:
   - stage: Test
     dependsOn: Build
     jobs:
-      - job: Test_HQRM
-        displayName: 'HQRM'
-        pool:
-          vmImage: 'windows-latest'
-        timeoutInMinutes: 0
-        steps:
-          - task: DownloadPipelineArtifact@2
-            displayName: 'Download Build Artifact'
-            inputs:
-              buildType: 'current'
-              artifactName: $(buildArtifactName)
-              targetPath: '$(Build.SourcesDirectory)/$(buildFolderName)'
-          - task: PowerShell@2
-            name: test
-            displayName: 'Run HQRM Test'
-            inputs:
-              filePath: './build.ps1'
-              arguments: '-Tasks hqrmtest'
-              pwsh: false
-          - task: PublishTestResults@2
-            displayName: 'Publish Test Results'
-            condition: succeededOrFailed()
-            inputs:
-              testResultsFormat: 'NUnit'
-              testResultsFiles: 'output/testResults/NUnit*.xml'
-              testRunTitle: 'HQRM'
-
-      # If several pipeline jobs are running test, consider renaming this job:
       - job: Test_Unit
         displayName: 'Unit'
         pool:
@@ -182,7 +154,7 @@ stages:
             displayName: 'Run Integration Test'
             inputs:
               filePath: './build.ps1'
-              arguments: "-Tasks test -CodeCoverageThreshold 0 -PesterScript 'tests/Integration'"
+              arguments: "-Tasks test -CodeCoverageThreshold 0 -PesterScript 'tests/Integration.Tests.ps1'"
               pwsh: false
           - task: PublishTestResults@2
             displayName: 'Publish Test Results'

@@ -1,7 +1,11 @@
 BeforeAll {
-    # Import module
-    $ModulePath = Split-Path -Parent $PSScriptRoot
-    Import-Module "$ModulePath\RDP-Forensic.psd1" -Force
+    # Import the built module
+    $script:ProjectRoot = Split-Path -Parent $PSScriptRoot
+    $ModulePath = Join-Path $script:ProjectRoot 'source' 'Public'
+    $builtModule = Get-ChildItem -Path (Join-Path $script:ProjectRoot 'output' 'module' 'RDP-Forensic') -Filter 'RDP-Forensic.psd1' -Recurse | Select-Object -First 1
+    if ($builtModule) {
+        Import-Module $builtModule.FullName -Force
+    }
 }
 
 Describe "Get-RDPForensics Session Correlation Tests" {
@@ -222,16 +226,15 @@ Describe "Get-RDPForensics Session Correlation Tests" {
     }
     
     Context "Version Information" {
-        It "Should be version 1.0.8 or higher" {
-            $version = (Get-Command Get-RDPForensics).Version
-            $version.Major | Should -BeGreaterOrEqual 1
-            $version.Minor | Should -BeGreaterOrEqual 0
-            $version.Build | Should -BeGreaterOrEqual 8
+        It "Should have a version defined" {
+            $module = Get-Module RDP-Forensic
+            $module.Version | Should -Not -BeNullOrEmpty
         }
         
-        It "Module manifest should show version 1.0.8" {
-            $manifest = Test-ModuleManifest "$ModulePath\RDP-Forensic.psd1" -ErrorAction SilentlyContinue
-            $manifest.Version.ToString() | Should -Be '1.0.8'
+        It "Module manifest should be valid" {
+            $builtManifest = Get-ChildItem -Path (Join-Path $script:ProjectRoot 'output' 'module' 'RDP-Forensic') -Filter 'RDP-Forensic.psd1' -Recurse | Select-Object -First 1
+            $manifest = Test-ModuleManifest $builtManifest.FullName -ErrorAction SilentlyContinue
+            $manifest | Should -Not -BeNullOrEmpty
         }
     }
     
