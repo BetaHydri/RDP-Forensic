@@ -1,17 +1,17 @@
+# Ignore the .vs folder which contains Visual Studio's user-specific settings
+.vs/
+# Sampler build output
 output/
 
-**.bak
-*.local.*
-!**/README.md
-.kitchen/
-
+# PowerShell module artifacts
 *.nupkg
-*.suo
-*.user
-*.coverage
-.vs
-.psproj
-.sln
-markdownissues.txt
-node_modules
-package-lock.json
+
+# IDE
+*.code-workspace
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Exports from assessment runs
+Exports/
