@@ -5,10 +5,6 @@ Comprehensive PowerShell toolkit for analyzing and tracking Remote Desktop Proto
 [![PowerShell Gallery](https://img.shields.io/powershellgallery/v/RDP-Forensic?label=RDP-Forensic)](https://www.powershellgallery.com/packages/RDP-Forensic/)
 [![PowerShell](https://img.shields.io/badge/PowerShell-5.1%20%7C%207.x-blue?logo=powershell&logoColor=white)](https://www.powershellgallery.com/packages/RDP-Forensic/)
 
-## Code of Conduct
-
-This project has adopted this [Code of Conduct](CODE_OF_CONDUCT.md).
-
 ## Releases
 
 For each merge to the branch `main` a preview release will be
