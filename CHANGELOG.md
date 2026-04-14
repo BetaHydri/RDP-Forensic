@@ -5,6 +5,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Removed Code of Conduct section from README.md.
+- Removed Contributing section from README.md.
+- Updated PowerShell Gallery badge to include prerelease version.
+- Cleaned up `.gitignore` by removing unnecessary entries.
+
+## [2.1.3] - 2026-03-31
+
+### Changed
+
+- Replaced manual `Import-Module .\RDP-Forensic.psm1` with
+  `Install-Module` in all documentation and examples.
+- Removed outdated `NEW v1.0.x` labels from examples.
+- Replaced deprecated `Get-EventLog` with `Get-WinEvent` in
+  Quick Reference guide.
+- Fixed `.AllEvents` to `.Events` property name in Kerberos/NTLM
+  authentication documentation.
+- Removed hardcoded version `1.0.8` from `Examples.ps1`.
+- Updated file structure description from "5 files" to module cmdlets.
+- Fixed relative link paths in Kerberos/NTLM See Also section.
+- Renamed "Scripts" section to "Cmdlets" in README.
+
 ## [2.1.1] - 2026-03-31
 
 ### Changed

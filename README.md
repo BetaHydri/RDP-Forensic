@@ -727,10 +727,6 @@ See [CHANGELOG.md](CHANGELOG.md) for complete version history.
 
 This toolkit is provided as-is for forensic analysis and security monitoring purposes.
 
-## Contributing
-
-Please check out the [contributing guidelines](CONTRIBUTING.md).
-
 ## Change log
 
 A full list of changes in each version can be found in the [change log](CHANGELOG.md).
