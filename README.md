@@ -2,7 +2,7 @@
 
 Comprehensive PowerShell toolkit for analyzing and tracking Remote Desktop Protocol (RDP) connections in Windows environments. Provides forensic analysis, real-time monitoring, and detailed reporting of RDP activities across multiple Windows Event Log sources.
 
-[![PowerShell Gallery (with prereleases)](https://img.shields.io/powershellgallery/vpre/RDP-Forensic?label=RDP-Forensic%20Preview)](https://www.powershellgallery.com/packages/RDP-Forensic/)
+[![PowerShell Gallery (with prereleases)](https://img.shields.io/powershellgallery/v/RDP-Forensic?include_prereleases&label=RDP-Forensic%20Preview)](https://www.powershellgallery.com/packages/RDP-Forensic/)
 [![PowerShell Gallery](https://img.shields.io/powershellgallery/v/RDP-Forensic?label=RDP-Forensic)](https://www.powershellgallery.com/packages/RDP-Forensic/)
 
 ## Code of Conduct
