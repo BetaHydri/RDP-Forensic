@@ -15,3 +15,6 @@ Thumbs.db
 
 # Exports from assessment runs
 Exports/
+
+# Memory Bank (local agent context, never push)
+.memory-bank/
