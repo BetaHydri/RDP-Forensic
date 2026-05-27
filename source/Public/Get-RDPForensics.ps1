@@ -940,7 +940,7 @@ function Get-RDPForensics
                             {
                                 'N/A' 
                             }
-                            $sourceIP = if ($message -match 'Client Address:\s+::ffff:([^\r\n]+)')
+                            $eventSourceIP = if ($message -match 'Client Address:\s+::ffff:([^\r\n]+)')
                             {
                                 $matches[1].Trim() 
                             }
@@ -985,7 +985,7 @@ function Get-RDPForensics
                                 EventType   = $eventType
                                 User        = $userName
                                 Domain      = $userDomain
-                                SourceIP    = $sourceIP
+                                SourceIP    = $eventSourceIP
                                 SessionID   = $null
                                 LogonID     = $null
                                 ActivityID  = $activityID
@@ -1019,7 +1019,7 @@ function Get-RDPForensics
                             {
                                 'N/A' 
                             }
-                            $sourceIP = if ($message -match 'Client Address:\s+::ffff:([^\r\n]+)')
+                            $eventSourceIP = if ($message -match 'Client Address:\s+::ffff:([^\r\n]+)')
                             {
                                 $matches[1].Trim() 
                             }
@@ -1056,7 +1056,7 @@ function Get-RDPForensics
                                 EventType   = $eventType
                                 User        = $userName
                                 Domain      = $userDomain
-                                SourceIP    = $sourceIP
+                                SourceIP    = $eventSourceIP
                                 SessionID   = $null
                                 LogonID     = $null
                                 ActivityID  = $activityID
@@ -1090,7 +1090,7 @@ function Get-RDPForensics
                             {
                                 'N/A' 
                             }
-                            $sourceIP = if ($message -match 'Client Address:\s+::ffff:([^\r\n]+)')
+                            $eventSourceIP = if ($message -match 'Client Address:\s+::ffff:([^\r\n]+)')
                             {
                                 $matches[1].Trim() 
                             }
@@ -1112,7 +1112,7 @@ function Get-RDPForensics
                                 EventType   = $eventType
                                 User        = $userName
                                 Domain      = $userDomain
-                                SourceIP    = $sourceIP
+                                SourceIP    = $eventSourceIP
                                 SessionID   = $null
                                 LogonID     = $null
                                 ActivityID  = $activityID
@@ -1142,7 +1142,7 @@ function Get-RDPForensics
                             {
                                 'N/A' 
                             }
-                            $sourceIP = if ($message -match 'Client Address:\s+::ffff:([^\r\n]+)')
+                            $eventSourceIP = if ($message -match 'Client Address:\s+::ffff:([^\r\n]+)')
                             {
                                 $matches[1].Trim() 
                             }
@@ -1201,7 +1201,7 @@ function Get-RDPForensics
                             }
 
                             $eventType = 'Kerberos Pre-auth Failed'
-                            $details = "Error: $errorDesc | Source: $sourceIP"
+                            $details = "Error: $errorDesc | Source: $eventSourceIP"
 
                             [PSCustomObject]@{
                                 TimeCreated = $event.TimeCreated
@@ -1209,7 +1209,7 @@ function Get-RDPForensics
                                 EventType   = $eventType
                                 User        = $userName
                                 Domain      = $userDomain
-                                SourceIP    = $sourceIP
+                                SourceIP    = $eventSourceIP
                                 SessionID   = $null
                                 LogonID     = $null
                                 ActivityID  = $activityID
@@ -1235,7 +1235,7 @@ function Get-RDPForensics
                             {
                                 'N/A' 
                             }
-                            $sourceIP = if ($message -match 'Client Address:\s+::ffff:([^\r\n]+)')
+                            $eventSourceIP = if ($message -match 'Client Address:\s+::ffff:([^\r\n]+)')
                             {
                                 $matches[1].Trim() 
                             }
@@ -1265,7 +1265,7 @@ function Get-RDPForensics
                                 EventType   = $eventType
                                 User        = $userName
                                 Domain      = $userDomain
-                                SourceIP    = $sourceIP
+                                SourceIP    = $eventSourceIP
                                 SessionID   = $null
                                 LogonID     = $null
                                 ActivityID  = $activityID
@@ -1399,7 +1399,7 @@ function Get-RDPForensics
                             {
                                 'N/A' 
                             }
-                            $sourceIP = if ($message -match 'Network Information:[\s\S]*?Network Address:\s+([^\r\n]+)')
+                            $eventSourceIP = if ($message -match 'Network Information:[\s\S]*?Network Address:\s+([^\r\n]+)')
                             {
                                 $matches[1].Trim() 
                             }
@@ -1448,7 +1448,7 @@ function Get-RDPForensics
                                 EventType   = $eventType
                                 User        = $userName
                                 Domain      = $userDomain
-                                SourceIP    = $sourceIP
+                                SourceIP    = $eventSourceIP
                                 SessionID   = $null
                                 LogonID     = $subjectLogonID
                                 ActivityID  = $activityID
@@ -1486,7 +1486,7 @@ function Get-RDPForensics
                                 $userName = $accountName
                             }
 
-                            $sourceIP = if ($message -match 'Source Network Address:\s+([^\r\n]+)')
+                            $eventSourceIP = if ($message -match 'Source Network Address:\s+([^\r\n]+)')
                             {
                                 $matches[1].Trim() 
                             }
@@ -1578,7 +1578,7 @@ function Get-RDPForensics
                                 EventType   = $eventType
                                 User        = $userName
                                 Domain      = $userDomain
-                                SourceIP    = $sourceIP
+                                SourceIP    = $eventSourceIP
                                 SessionID   = $null
                                 LogonID     = $logonID
                                 ActivityID  = $activityID
@@ -1964,7 +1964,7 @@ function Get-RDPForensics
                     {
                         'N/A' 
                     }
-                    $sourceIP = if ($message -match 'Client Address:\s+([^\r\n]+)')
+                    $eventSourceIP = if ($message -match 'Client Address:\s+([^\r\n]+)')
                     {
                         $matches[1].Trim() 
                     }
@@ -1988,7 +1988,7 @@ function Get-RDPForensics
                         EventType   = $eventType
                         User        = $userName
                         Domain      = $userDomain
-                        SourceIP    = $sourceIP
+                        SourceIP    = $eventSourceIP
                         SessionID   = $sessionName
                         LogonID     = $logonID
                         ActivityID  = $activityID
@@ -2275,7 +2275,7 @@ function Get-RDPForensics
                     {
                         $userName = if ($message -match 'Account Name:\s+([^\r\n]+)') { $matches[1].Trim() } else { 'N/A' }
                         $userDomain = if ($message -match 'Account Domain:\s+([^\r\n]+)') { $matches[1].Trim() } else { 'N/A' }
-                        $sourceIP = if ($message -match 'Client Address:\s+::ffff:([^\r\n]+)') { $matches[1].Trim() }
+                        $eventSourceIP = if ($message -match 'Client Address:\s+::ffff:([^\r\n]+)') { $matches[1].Trim() }
                         elseif ($message -match 'Client Address:\s+([^\r\n]+)') { $matches[1].Trim() } else { 'N/A' }
                         $statusCode = if ($message -match 'Result Code:\s+([^\r\n]+)') { $matches[1].Trim() } else { 'N/A' }
                         $ticketOptions = if ($message -match 'Ticket Options:\s+([^\r\n]+)') { $matches[1].Trim() } else { 'N/A' }
@@ -2287,7 +2287,7 @@ function Get-RDPForensics
                             EventType   = $eventType
                             User        = $userName
                             Domain      = $userDomain
-                            SourceIP    = $sourceIP
+                            SourceIP    = $eventSourceIP
                             SessionID   = $null
                             LogonID     = $null
                             ActivityID  = $activityID
@@ -2299,7 +2299,7 @@ function Get-RDPForensics
                         $userName = if ($message -match 'Account Name:\s+([^\r\n]+)') { $matches[1].Trim() } else { 'N/A' }
                         $userDomain = if ($message -match 'Account Domain:\s+([^\r\n]+)') { $matches[1].Trim() } else { 'N/A' }
                         $serviceName = if ($message -match 'Service Name:\s+([^\r\n]+)') { $matches[1].Trim() } else { 'N/A' }
-                        $sourceIP = if ($message -match 'Client Address:\s+::ffff:([^\r\n]+)') { $matches[1].Trim() }
+                        $eventSourceIP = if ($message -match 'Client Address:\s+::ffff:([^\r\n]+)') { $matches[1].Trim() }
                         elseif ($message -match 'Client Address:\s+([^\r\n]+)') { $matches[1].Trim() } else { 'N/A' }
                         $statusCode = if ($message -match 'Failure Code:\s+([^\r\n]+)') { $matches[1].Trim() } else { '0x0' }
                         $eventType = if ($statusCode -eq '0x0') { 'Kerberos Service Ticket Success' } else { 'Kerberos Service Ticket Failed' }
@@ -2310,7 +2310,7 @@ function Get-RDPForensics
                             EventType   = $eventType
                             User        = $userName
                             Domain      = $userDomain
-                            SourceIP    = $sourceIP
+                            SourceIP    = $eventSourceIP
                             SessionID   = $null
                             LogonID     = $null
                             ActivityID  = $activityID
@@ -2322,7 +2322,7 @@ function Get-RDPForensics
                         $userName = if ($message -match 'Account Name:\s+([^\r\n]+)') { $matches[1].Trim() } else { 'N/A' }
                         $userDomain = if ($message -match 'Account Domain:\s+([^\r\n]+)') { $matches[1].Trim() } else { 'N/A' }
                         $serviceName = if ($message -match 'Service Name:\s+([^\r\n]+)') { $matches[1].Trim() } else { 'N/A' }
-                        $sourceIP = if ($message -match 'Client Address:\s+::ffff:([^\r\n]+)') { $matches[1].Trim() }
+                        $eventSourceIP = if ($message -match 'Client Address:\s+::ffff:([^\r\n]+)') { $matches[1].Trim() }
                         elseif ($message -match 'Client Address:\s+([^\r\n]+)') { $matches[1].Trim() } else { 'N/A' }
 
                         [PSCustomObject]@{
@@ -2331,7 +2331,7 @@ function Get-RDPForensics
                             EventType   = 'Kerberos Ticket Renewed'
                             User        = $userName
                             Domain      = $userDomain
-                            SourceIP    = $sourceIP
+                            SourceIP    = $eventSourceIP
                             SessionID   = $null
                             LogonID     = $null
                             ActivityID  = $activityID
@@ -2343,7 +2343,7 @@ function Get-RDPForensics
                         $userName = if ($message -match 'Account Name:\s+([^\r\n]+)') { $matches[1].Trim() } else { 'N/A' }
                         $userDomain = if ($message -match 'Service Name:\s+krbtgt/([^\r\n]+)') { $matches[1].Trim() }
                         elseif ($message -match 'Account Domain:\s+([^\r\n]+)') { $matches[1].Trim() } else { 'N/A' }
-                        $sourceIP = if ($message -match 'Client Address:\s+::ffff:([^\r\n]+)') { $matches[1].Trim() }
+                        $eventSourceIP = if ($message -match 'Client Address:\s+::ffff:([^\r\n]+)') { $matches[1].Trim() }
                         elseif ($message -match 'Client Address:\s+([^\r\n]+)') { $matches[1].Trim() } else { 'N/A' }
                         $errorCode = if ($message -match 'Failure Code:\s+([^\r\n]+)') { $matches[1].Trim() } else { 'N/A' }
                         $errorDesc = switch ($errorCode)
@@ -2364,7 +2364,7 @@ function Get-RDPForensics
                             EventType   = 'Kerberos Pre-auth Failed'
                             User        = $userName
                             Domain      = $userDomain
-                            SourceIP    = $sourceIP
+                            SourceIP    = $eventSourceIP
                             SessionID   = $null
                             LogonID     = $null
                             ActivityID  = $activityID
@@ -2375,7 +2375,7 @@ function Get-RDPForensics
                     {
                         $userName = if ($message -match 'Account Name:\s+([^\r\n]+)') { $matches[1].Trim() } else { 'N/A' }
                         $userDomain = if ($message -match 'Account Domain:\s+([^\r\n]+)') { $matches[1].Trim() } else { 'N/A' }
-                        $sourceIP = if ($message -match 'Client Address:\s+::ffff:([^\r\n]+)') { $matches[1].Trim() }
+                        $eventSourceIP = if ($message -match 'Client Address:\s+::ffff:([^\r\n]+)') { $matches[1].Trim() }
                         elseif ($message -match 'Client Address:\s+([^\r\n]+)') { $matches[1].Trim() } else { 'N/A' }
 
                         [PSCustomObject]@{
@@ -2384,7 +2384,7 @@ function Get-RDPForensics
                             EventType   = 'Kerberos Auth Ticket Failed'
                             User        = $userName
                             Domain      = $userDomain
-                            SourceIP    = $sourceIP
+                            SourceIP    = $eventSourceIP
                             SessionID   = $null
                             LogonID     = $null
                             ActivityID  = $activityID

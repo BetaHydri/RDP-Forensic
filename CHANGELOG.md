@@ -5,6 +5,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.2.1] - 2026-05-27
+
+### Fixed
+
+- Fixed variable name collision where inner `$sourceIP` assignments in nested
+  parsing functions overwrote the `-SourceIP` parameter (PowerShell variables
+  are case-insensitive). This caused the `-SourceIP` filter to always apply
+  with the last parsed event's source IP, even when not specified by the user.
+  Renamed all inner usages to `$eventSourceIP`.
+
+## [2.2.0] - 2026-05-27
+
 ### Added
 
 - Added `-DomainController` parameter to query specific Domain Controller(s)
