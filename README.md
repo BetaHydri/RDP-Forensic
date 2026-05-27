@@ -247,6 +247,89 @@ This screenshot shows:
 - **Complete timeline** - Full authentication flow from credential entry to session establishment
 - **Correlation** - All events linked by LogonID for complete session picture
 
+**Example: Session Correlation with `-GroupBySession`**
+
+When using `-GroupBySession`, events are correlated by LogonID/SessionID into session blocks with lifecycle tracking:
+
+```powershell
+Get-RDPForensics -GroupBySession -Username "admin" -StartDate (Get-Date).AddDays(-1)
+```
+
+```
+🔑 Correlating events by LogonID/SessionID...
+  ✅ Found 5 unique sessions (using LogonID-based correlation)
+
+──────────────────────────────────────────────────────────
+📊 ANALYSIS SUMMARY
+──────────────────────────────────────────────────────────
+Total Events: 28
+
+Events by Type:
+  Successful Logon: 5
+  Account Logged Off: 5
+  Connection Attempt: 2
+  Session Logon Succeeded: 2
+  Shell Start Notification: 2
+  Session Disconnected: 2
+
+──────────────────────────────────────────────────────────
+🔑 CORRELATED RDP SESSIONS
+──────────────────────────────────────────────────────────
+
+─── Session: LogonID:0x6950A4 ───
+  👤 User: CONTOSO\admin  |  💻 Source IP: 192.168.1.100
+  ⏱️ Start: 05/26/2026 09:15:03  |  End: 05/26/2026 17:32:45  |  Duration: 08:17:42
+  📊 Lifecycle: Connect → Auth → Logon → Active → Disconnect → Logoff
+  📁 Events: 8
+
+TimeCreated         EventID EventType             User           SourceIP      SessionID LogonID  Details
+-----------         ------- ---------             ----           --------      --------- -------  -------
+26.05.2026 09:15:03    1149 Connection Attempt    CONTOSO\admin  192.168.1.100                    User: admin, Domain: CONTOSO
+26.05.2026 09:15:04    4624 Successful Logon      CONTOSO\admin  192.168.1.100           0x6950A4 RemoteInteractive (RDP) | ...
+26.05.2026 09:15:04      21 Session Logon         CONTOSO\admin  192.168.1.100 4                  Session ID: 4
+26.05.2026 09:15:04      22 Shell Start           CONTOSO\admin  192.168.1.100 4                  Session ID: 4
+26.05.2026 17:30:12    4779 Session Disconnected  CONTOSO\admin  192.168.1.100           0x6950A4 LogonID: 0x6950A4
+26.05.2026 17:30:12      24 Session Disconnected  CONTOSO\admin  192.168.1.100 4                  Source: 192.168.1.100
+26.05.2026 17:32:45    4634 Account Logged Off    CONTOSO\admin  N/A                     0x6950A4 LogonType: 10
+26.05.2026 17:32:45      23 Session Logoff        CONTOSO\admin                4                  Session ID: 4
+```
+
+Each session block shows:
+- **Session header** — Correlation key (LogonID or SessionID)
+- **User & Source IP** — Who connected and from where
+- **Duration** — Total session time from first to last event
+- **Lifecycle stages** — Visual indicator of session completeness:
+  `Connect → Auth → Logon → Active → Disconnect → Logoff`
+  (missing stages shown as `-`, partial sessions flagged with ⚠️)
+- **Event table** — All correlated events in chronological order
+
+**Understanding LogonTypes in Session Output**
+
+When using `-GroupBySession`, you may see sessions with different LogonTypes in the Details column:
+
+| LogonType | Description | What it means |
+|-----------|-------------|---------------|
+| **10** | RemoteInteractive (RDP) | ✅ Actual RDP session — this is what you're looking for |
+| **7** | Unlock/Reconnect | ✅ RDP session reconnect or workstation unlock |
+| **3** | Network | ⚠️ WinRM, SMB, or other network logon — **not an RDP session** |
+| **5** | Service/Console | ⚠️ Service logon or console session |
+
+It is normal to see many short-lived LogonType 3 (Network) sessions with link-local IPv6 addresses
+(e.g., `fe80::...`). These are **WinRM/SMB background logons** (e.g., Group Policy, scheduled tasks,
+remote management), not RDP connections. They appear because the tool correlates all Security log
+events matching the `-Username` filter, not just RDP ones.
+
+When using `-IncludeCredentialValidation`, the correlation engine correctly filters pre-authentication
+events (Kerberos/NTLM) to only those matching **RDP sessions (LogonType 10/7)**. This is why you may
+see "Filtered to 0 pre-auth events correlated to RDP sessions" — it means none of the visible
+sessions are actual RDP connections, so no Kerberos/NTLM events were matched.
+
+> **💡 Tip:** To quickly find actual RDP sessions in the output, look for sessions with
+> `RemoteInteractive (RDP)` in the Details column, or sessions that include EventID 1149
+> (Connection Attempt) and EventID 21/22 (Session Logon/Shell Start) in their lifecycle.
+
+> **💡 Tip:** Use `-LogonID` to deep-dive into a specific session after identifying it in the overview. LogonID provides the most reliable correlation as it persists across disconnect/reconnect cycles.
+
 **Parameters:**
 
 | Parameter | Type | Description | Default |

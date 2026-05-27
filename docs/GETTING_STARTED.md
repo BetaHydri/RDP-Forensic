@@ -137,6 +137,62 @@ TimeCreated         EventID EventType           User        SourceIP      Detail
 ...
 ```
 
+## Session Correlation Output (`-GroupBySession`)
+
+When using `-GroupBySession`, events are correlated by LogonID/SessionID into session blocks:
+
+```powershell
+Get-RDPForensics -GroupBySession -Username "admin" -StartDate (Get-Date).AddDays(-1)
+```
+
+```
+🔑 Correlating events by LogonID/SessionID...
+  ✅ Found 5 unique sessions (using LogonID-based correlation)
+
+──────────────────────────────────────────────────────────
+🔑 CORRELATED RDP SESSIONS
+──────────────────────────────────────────────────────────
+
+─── Session: LogonID:0x6950A4 ───
+  👤 User: CONTOSO\admin  |  💻 Source IP: 192.168.1.100
+  ⏱️ Start: 05/26/2026 09:15:03  |  End: 05/26/2026 17:32:45  |  Duration: 08:17:42
+  📊 Lifecycle: Connect → Auth → Logon → Active → Disconnect → Logoff
+  📁 Events: 8
+
+TimeCreated         EventID EventType             User           SourceIP      SessionID LogonID  Details
+-----------         ------- ---------             ----           --------      --------- -------  -------
+26.05.2026 09:15:03    1149 Connection Attempt    CONTOSO\admin  192.168.1.100                    User: admin, Domain: CONTOSO
+26.05.2026 09:15:04    4624 Successful Logon      CONTOSO\admin  192.168.1.100           0x6950A4 RemoteInteractive (RDP) | ...
+26.05.2026 09:15:04      21 Session Logon         CONTOSO\admin  192.168.1.100 4                  Session ID: 4
+26.05.2026 17:32:45    4634 Account Logged Off    CONTOSO\admin  N/A                     0x6950A4 LogonType: 10
+```
+
+### Understanding LogonTypes in Session Output
+
+The sessions shown by `-GroupBySession` include **all** correlated Security log events for the
+filtered user — not just RDP sessions. You will commonly see:
+
+| LogonType in Details | What it is | RDP? |
+|---------------------|------------|------|
+| `RemoteInteractive (RDP)` (Type 10) | Actual RDP session | ✅ Yes |
+| `Unlock/Reconnect` (Type 7) | RDP reconnect or workstation unlock | ✅ Yes |
+| `Network` (Type 3) | WinRM, SMB, or Group Policy logon | ❌ No |
+| `Service/Console` (Type 5) | Service or console logon | ❌ No |
+
+**Common scenario:** Many short-lived LogonType 3 (Network) sessions with link-local IPv6 addresses
+(`fe80::...`) appearing in the output. These are **WinRM/SMB background logons** — not RDP
+connections. This is expected behavior.
+
+When using `-IncludeCredentialValidation`, the correlation engine only matches pre-authentication
+events (Kerberos/NTLM) to **RDP sessions (LogonType 10/7)**. If the output shows
+"Filtered to 0 pre-auth events correlated to RDP sessions", it means no actual RDP sessions
+were found among the correlated sessions — only network logons.
+
+**How to identify actual RDP sessions:**
+- Look for `RemoteInteractive (RDP)` in the Details column
+- Look for sessions containing EventID 1149 (Connection Attempt) or EventID 21/22 (Session Logon)
+- RDP sessions typically have a complete lifecycle: `Connect → Auth → Logon → Active → Disconnect → Logoff`
+
 ## Export Output
 
 When using `-ExportPath`, you get:
