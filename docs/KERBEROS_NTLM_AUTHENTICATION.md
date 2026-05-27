@@ -137,21 +137,29 @@ When a user attempts to connect via RDP, Windows first tries **Kerberos authenti
 
 ### Basic Authentication Tracking
 ```powershell
-# Include Kerberos and NTLM events in analysis
-# ⚠️ NOTE: Will only find events if running on Domain Controller
-# Running on Terminal Server will show NO Kerberos/NTLM events
+# Include Kerberos and NTLM events — auto-discovers Terminal Server's secure channel DC
 Get-RDPForensics -IncludeCredentialValidation -GroupBySession
+
+# Query a specific Domain Controller
+Get-RDPForensics -DomainController 'DC01' -GroupBySession
+
+# Query multiple DCs for broader Kerberos coverage
+Get-RDPForensics -DomainController 'DC01','DC02' -GroupBySession
+
+# Query ALL DCs in the domain (thorough but slower)
+Get-RDPForensics -AllDomainControllers -GroupBySession
 ```
 
-⚠️ **Expected Result on Terminal Server:**
-- Kerberos event count: 0 (events are on DC, not Terminal Server)
-- NTLM event count: 0 (events are on DC, not Terminal Server)  
-- RDP session events: Normal (events are local)
+**How DC Auto-Discovery Works:**
+- When `-IncludeCredentialValidation` is used without `-DomainController`, the tool
+  auto-discovers the Terminal Server's secure channel DC using `nltest /sc_query`
+- NTLM validation (4776) reliably lands on this DC
+- Kerberos events (4768/4769) may land on any DC the connecting client contacts
+- Use `-AllDomainControllers` for complete Kerberos coverage
+- Events are retrieved via WinRM (Invoke-Command) with automatic RPC/DCOM fallback
+- Requires "Event Log Readers" group membership on the DC(s)
 
-✅ **Expected Result on Domain Controller:**
-- Kerberos event count: High (all domain Kerberos authentications)
-- NTLM event count: High (all NTLM authentications)
-- RDP session events: Only if DC is also an RDP target
+**When running directly on a Domain Controller**, local event logs are queried (no remote call needed).
 
 ### Find Kerberos Failures
 ```powershell
@@ -238,12 +246,12 @@ For pre-authentication events from the Domain Controller:
 
 ⚠️ **CRITICAL LIMITATION: Where Events Are Logged**
 
-| Event Type | Event IDs | Logged On | Available When Running on TS? |
+| Event Type | Event IDs | Logged On | Available from TS? |
 |------------|-----------|-----------|-------------------------------|
-| **RDP Session** | 4624, 1149, 21-25, 4778, 4779 | Terminal Server | ✅ YES |
-| **Kerberos Auth** | 4768-4772 | **Domain Controller** | ❌ NO |
-| **NTLM Auth** | 4776 | **Domain Controller** | ❌ NO |
-| **NTLM Auth** | 4776 | On member servers or clients when a **local account is authenticated**. | ✅ YES |
+| **RDP Session** | 4624, 1149, 21-25, 4778, 4779 | Terminal Server | ✅ Local |
+| **Kerberos Auth** | 4768-4772 | **Domain Controller** | ✅ Remote query via `-DomainController` or `-AllDomainControllers` |
+| **NTLM Auth** | 4776 | **Domain Controller** | ✅ Remote query (auto-discovered secure channel DC) |
+| **NTLM Auth** | 4776 | Member server (local account auth) | ✅ Local |
 
 **Why ActivityID Cannot Correlate Across Machines:**
 - ActivityID is **provider-specific** and **machine-local**
@@ -254,20 +262,23 @@ For pre-authentication events from the Domain Controller:
 
 **Use Cases:**
 
-✅ **PRIMARY USE CASE:** Running tool on Terminal Server to analyze RDP sessions
+✅ **PRIMARY USE CASE:** Running tool on Terminal Server with `-IncludeCredentialValidation`
 - Excellent ActivityID correlation between 4624 → 4778 → 4634 (all on same machine)
 - Perfect for session lifecycle tracking
-- `-IncludeCredentialValidation` will return ZERO Kerberos/NTLM events (they're on DC)
+- Tool auto-discovers the TS's secure channel DC and queries Kerberos/NTLM events remotely
+- NTLM (4776) coverage is reliable; Kerberos coverage depends on which DC the client used
+- Use `-AllDomainControllers` for full Kerberos coverage
 
-⚠️ **LIMITED USE CASE:** Running tool on Domain Controller
+✅ **EXPLICIT DC TARGETING:** Running tool on Terminal Server with `-DomainController DC01,DC02`
+- Query specific DCs for pre-authentication events
+- Useful when you know which DCs serve your environment
+- Transport: WinRM (Invoke-Command) with automatic RPC/DCOM fallback
+- Requires "Event Log Readers" group membership on target DC(s)
+
+⚠️ **LIMITED USE CASE:** Running tool directly on Domain Controller
 - Will see authentication events (4768-4772, 4776) for ALL domain authentications
 - But will NOT see Terminal Server session events (21-25, 4778, 4779)
 - Different purpose (DC authentication monitoring, not RDP session tracking)
-
-🔧 **ADVANCED SCENARIO:** Multi-system correlation
-- Collect DC logs separately: `Get-RDPForensics -IncludeCredentialValidation` on DC
-- Collect TS logs separately: `Get-RDPForensics -GroupBySession` on Terminal Server
-- Correlate manually using username + timestamp matching
 
 ## Audit Policy Configuration
 

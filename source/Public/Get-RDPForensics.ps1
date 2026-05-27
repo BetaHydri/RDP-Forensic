@@ -56,11 +56,13 @@ function Get-RDPForensics
     - EventID 4768-4772 (Kerberos authentication: TGT, service tickets, failures)
     - EventID 4776 (NTLM Credential Validation - used when Kerberos fails/unavailable)
 
-    ⚠️ IMPORTANT: These events are logged on the DOMAIN CONTROLLER, not the Terminal Server.
-    When running this tool on a Terminal Server, these events will be EMPTY (count: 0).
-    Only use this parameter when:
-    - Running on a Domain Controller to analyze authentication patterns
-    - Analyzing logs exported from a Domain Controller
+    When used with -DomainController or -AllDomainControllers, these events are queried
+    remotely from the specified Domain Controller(s) via WinRM (with RPC/DCOM fallback).
+    When used without DC parameters, the tool auto-discovers the Terminal Server's secure
+    channel DC and queries it remotely. This reliably captures NTLM (4776) events and
+    any Kerberos events that happened to land on that DC.
+
+    When running directly on a Domain Controller, local event logs are queried.
 
     Shows complete authentication story:
     - Kerberos attempts (4768 TGT request, 4769 service ticket)
@@ -74,6 +76,33 @@ function Get-RDPForensics
     - All pre-auth events matched within 0-10 second window before RDP session start
     - Automatically filters out non-RDP authentications (SMB, SQL, Exchange, etc.)
     - Only shows pre-auth events that correlate to RDP Logon Type 10/7/3/5
+
+.PARAMETER DomainController
+    One or more Domain Controller hostnames to query for pre-authentication events
+    (Kerberos 4768-4772 and NTLM 4776). Implies -IncludeCredentialValidation.
+
+    Events are retrieved via WinRM (Invoke-Command) with automatic fallback to
+    RPC/DCOM (Get-WinEvent -ComputerName) if WinRM is unavailable.
+
+    Requires "Event Log Readers" group membership or equivalent permissions on the DC.
+
+    When omitted but -IncludeCredentialValidation is specified, the tool auto-discovers
+    the Terminal Server's secure channel DC using nltest.
+
+    NTLM validation (4776) reliably lands on the Terminal Server's secure channel DC.
+    Kerberos events (4768/4769) may land on any DC the connecting client contacts.
+    Use -AllDomainControllers for thorough Kerberos coverage.
+
+.PARAMETER AllDomainControllers
+    Query ALL Domain Controllers in the domain for pre-authentication events.
+    Implies -IncludeCredentialValidation.
+
+    This provides the most thorough coverage for Kerberos events (4768-4772) which
+    may be logged on any DC the connecting client workstation uses. However, this is
+    slower in large environments with many DCs.
+
+    Auto-discovers DCs using Get-ADDomainController -Filter *.
+    Falls back to nltest /dclist if the ActiveDirectory module is unavailable.
 
 .EXAMPLE
     Get-RDPForensics
@@ -97,8 +126,21 @@ function Get-RDPForensics
 
 .EXAMPLE
     Get-RDPForensics -IncludeCredentialValidation -GroupBySession
-    Include Kerberos (4768-4772) and NTLM (4776) authentication events with time-based correlation.
-    ⚠️ NOTE: Only works when running on Domain Controller. Will return 0 events on Terminal Server.
+    Include Kerberos (4768-4772) and NTLM (4776) authentication events.
+    Auto-discovers the Terminal Server's secure channel DC and queries it remotely.
+
+.EXAMPLE
+    Get-RDPForensics -DomainController 'DC01' -GroupBySession
+    Query DC01 for pre-authentication events and correlate with local RDP session data.
+
+.EXAMPLE
+    Get-RDPForensics -DomainController 'DC01','DC02' -GroupBySession -Username 'john.doe'
+    Query multiple DCs for auth events for a specific user.
+
+.EXAMPLE
+    Get-RDPForensics -AllDomainControllers -GroupBySession
+    Query ALL domain controllers for complete Kerberos and NTLM coverage.
+    Thorough but slower in large environments.
 
 .EXAMPLE
     Get-RDPForensics -GroupBySession -LogonID "0x6950A4"
@@ -112,6 +154,7 @@ function Get-RDPForensics
     Author: Jan Tiedemann
     Based on: https://woshub.com/rdp-connection-logs-forensics-windows/
     Requires: Administrator privileges to read Security event logs
+    DC Query: Requires "Event Log Readers" membership on Domain Controllers
 #>
 
     [CmdletBinding(DefaultParameterSetName = 'Default')]
@@ -144,11 +187,127 @@ function Get-RDPForensics
         [switch]$GroupBySession,
 
         [Parameter()]
-        [switch]$IncludeCredentialValidation
+        [switch]$IncludeCredentialValidation,
+
+        [Parameter()]
+        [string[]]$DomainController,
+
+        [Parameter()]
+        [switch]$AllDomainControllers
     )
 
     # Error handling preference
     $ErrorActionPreference = 'Continue'
+
+    # Resolve Domain Controller targets (parameter implication only - discovery happens after Get-Emoji is defined)
+    # -DomainController and -AllDomainControllers imply -IncludeCredentialValidation
+    if ($DomainController -or $AllDomainControllers)
+    {
+        $IncludeCredentialValidation = [switch]::new($true)
+    }
+
+    $dcTargets = @()
+
+    # Function to query Domain Controller(s) for pre-authentication events
+    function Get-DCAuthenticationEvents
+    {
+        param(
+            [string[]]$DCList,
+            [DateTime]$Start,
+            [DateTime]$End
+        )
+
+        $allDCEvents = @()
+
+        foreach ($dc in $DCList)
+        {
+            Write-Host "  Querying DC: $dc ..." -ForegroundColor Cyan -NoNewline
+
+            $filterHashtable = @{
+                LogName   = 'Security'
+                StartTime = $Start
+                EndTime   = $End
+            }
+
+            $dcEvents = $null
+            $usedMethod = ''
+
+            # Try WinRM first (Invoke-Command) - faster and firewall-friendly
+            try
+            {
+                $dcEvents = Invoke-Command -ComputerName $dc -ScriptBlock {
+                    param($Filter)
+
+                    # Kerberos events
+                    $kerberos = Get-WinEvent -FilterHashtable @{
+                        LogName   = $Filter.LogName
+                        Id        = 4768, 4769, 4770, 4771, 4772
+                        StartTime = $Filter.StartTime
+                        EndTime   = $Filter.EndTime
+                    } -ErrorAction SilentlyContinue
+
+                    # NTLM events
+                    $ntlm = Get-WinEvent -FilterHashtable @{
+                        LogName   = $Filter.LogName
+                        Id        = 4776
+                        StartTime = $Filter.StartTime
+                        EndTime   = $Filter.EndTime
+                    } -ErrorAction SilentlyContinue | Where-Object {
+                        $_.Message -match 'Source Workstation:\s+\S+' -and
+                        $_.Message -notmatch 'Source Workstation:\s+(LOCAL|LOCALHOST|127\.0\.0\.1|-)'
+                    }
+
+                    @($kerberos) + @($ntlm)
+                } -ArgumentList $filterHashtable -ErrorAction Stop
+
+                $usedMethod = 'WinRM'
+            }
+            catch
+            {
+                # Fallback to RPC/DCOM (Get-WinEvent -ComputerName)
+                try
+                {
+                    $kerberos = Get-WinEvent -ComputerName $dc -FilterHashtable @{
+                        LogName   = 'Security'
+                        Id        = 4768, 4769, 4770, 4771, 4772
+                        StartTime = $Start
+                        EndTime   = $End
+                    } -ErrorAction SilentlyContinue
+
+                    $ntlm = Get-WinEvent -ComputerName $dc -FilterHashtable @{
+                        LogName   = 'Security'
+                        Id        = 4776
+                        StartTime = $Start
+                        EndTime   = $End
+                    } -ErrorAction SilentlyContinue | Where-Object {
+                        $_.Message -match 'Source Workstation:\s+\S+' -and
+                        $_.Message -notmatch 'Source Workstation:\s+(LOCAL|LOCALHOST|127\.0\.0\.1|-)'
+                    }
+
+                    $dcEvents = @($kerberos) + @($ntlm)
+                    $usedMethod = 'RPC'
+                }
+                catch
+                {
+                    Write-Host " FAILED" -ForegroundColor Red
+                    Write-Warning "  Cannot reach DC '$dc' via WinRM or RPC: $_"
+                    continue
+                }
+            }
+
+            if ($dcEvents -and $dcEvents.Count -gt 0)
+            {
+                Write-Host " $($dcEvents.Count) events ($usedMethod)" -ForegroundColor Green
+                $allDCEvents += $dcEvents
+            }
+            else
+            {
+                Write-Host " 0 events ($usedMethod)" -ForegroundColor DarkGray
+            }
+        }
+
+        return $allDCEvents
+    }
 
     # Emoji support for both PowerShell 5.1 and 7.x
     function Get-Emoji
@@ -505,6 +664,91 @@ function Get-RDPForensics
         }
     }
 
+    # Resolve Domain Controller discovery (requires Get-Emoji, defined above)
+    if ($AllDomainControllers)
+    {
+        Write-Host "$(Get-Emoji 'magnify') Discovering all Domain Controllers..." -ForegroundColor Cyan
+        try
+        {
+            # Try ActiveDirectory module first
+            if (Get-Module -ListAvailable -Name ActiveDirectory -ErrorAction SilentlyContinue)
+            {
+                Import-Module ActiveDirectory -ErrorAction Stop
+                $dcTargets = @(Get-ADDomainController -Filter * -ErrorAction Stop | Select-Object -ExpandProperty HostName)
+            }
+            else
+            {
+                # Fallback to nltest
+                $domain = $env:USERDNSDOMAIN
+                if (-not $domain)
+                {
+                    $domain = ([System.DirectoryServices.ActiveDirectory.Domain]::GetCurrentDomain()).Name
+                }
+                $nlOutput = nltest /dclist:$domain 2>&1
+                $dcTargets = @($nlOutput | Where-Object { $_ -match '^\s*\\\\(\S+)' } | ForEach-Object {
+                    $Matches[1] -replace '\s.*$', ''
+                })
+            }
+        }
+        catch
+        {
+            Write-Warning "Failed to discover Domain Controllers: $_"
+        }
+
+        if ($dcTargets.Count -gt 0)
+        {
+            Write-Host "  Found $($dcTargets.Count) Domain Controller(s): $($dcTargets -join ', ')" -ForegroundColor Green
+        }
+        else
+        {
+            Write-Warning "No Domain Controllers discovered. Pre-authentication events will be collected locally only."
+        }
+    }
+    elseif ($DomainController)
+    {
+        $dcTargets = @($DomainController)
+        Write-Host "$(Get-Emoji 'magnify') Using specified Domain Controller(s): $($dcTargets -join ', ')" -ForegroundColor Cyan
+    }
+    elseif ($IncludeCredentialValidation)
+    {
+        # Auto-discover the Terminal Server's secure channel DC
+        $isDC = $false
+        try
+        {
+            $isDC = (Get-CimInstance -ClassName Win32_OperatingSystem -ErrorAction SilentlyContinue).ProductType -eq 2
+        }
+        catch
+        {
+            # Ignore - assume not a DC
+        }
+
+        if (-not $isDC)
+        {
+            Write-Host "$(Get-Emoji 'magnify') Auto-discovering secure channel Domain Controller..." -ForegroundColor Cyan
+            try
+            {
+                $nlResult = nltest /sc_query 2>&1 | Out-String
+                if ($nlResult -match 'Trusted DC Name\s+\\\\(\S+)')
+                {
+                    $dcTargets = @($Matches[1])
+                    Write-Host "  Secure channel DC: $($dcTargets[0])" -ForegroundColor Green
+                }
+                else
+                {
+                    Write-Warning "Could not determine secure channel DC. Pre-authentication events will be collected locally."
+                }
+            }
+            catch
+            {
+                Write-Warning "nltest failed: $_. Pre-authentication events will be collected locally."
+            }
+        }
+        else
+        {
+            Write-Host "$(Get-Emoji 'magnify') Running on a Domain Controller - querying local event logs." -ForegroundColor Cyan
+        }
+    }
+
     # ASCII Art Header
     Write-Host "`n" -NoNewline
     $topLeft = [char]0x2554; $topRight = [char]0x2557; $bottomLeft = [char]0x255A; $bottomRight = [char]0x255D
@@ -522,6 +766,11 @@ function Get-RDPForensics
     Write-Host "$($StartDate.ToString('yyyy-MM-dd HH:mm:ss'))" -ForegroundColor White -NoNewline
     Write-Host " to " -ForegroundColor Gray -NoNewline
     Write-Host "$($EndDate.ToString('yyyy-MM-dd HH:mm:ss'))" -ForegroundColor White
+    if ($dcTargets.Count -gt 0)
+    {
+        Write-Host "$(Get-Emoji 'computer') DC Target(s): " -ForegroundColor Cyan -NoNewline
+        Write-Host "$($dcTargets -join ', ')" -ForegroundColor White
+    }
     Write-Host ""
 
     # Function to parse EventID 1149 - RDP Connection Attempts
@@ -1990,7 +2239,197 @@ function Get-RDPForensics
     # Collect all events
     $allEvents = @()
     $allEvents += Get-RDPConnectionAttempts -Start $StartDate -End $EndDate
-    $allEvents += Get-RDPAuthenticationEvents -Start $StartDate -End $EndDate -IncludeKerberosAndNTLM $IncludeCredentialValidation.IsPresent
+
+    # When DC targets are specified, collect Kerberos/NTLM from DCs and local auth separately
+    if ($dcTargets.Count -gt 0)
+    {
+        # Collect local authentication events (4624, 4625, 4648) - always local
+        $allEvents += Get-RDPAuthenticationEvents -Start $StartDate -End $EndDate -IncludeKerberosAndNTLM $false
+
+        # Collect Kerberos/NTLM pre-auth events from Domain Controller(s)
+        Write-Host "$(Get-Emoji 'key') Collecting pre-authentication events from Domain Controller(s)..." -ForegroundColor Yellow
+        $rawDCEvents = Get-DCAuthenticationEvents -DCList $dcTargets -Start $StartDate -End $EndDate
+
+        if ($rawDCEvents -and $rawDCEvents.Count -gt 0)
+        {
+            # Parse the raw DC events through the same parsing logic as local events
+            $dcParsed = foreach ($event in $rawDCEvents)
+            {
+                $message = $event.Message
+
+                # Extract ActivityID from XML
+                $activityID = $null
+                try
+                {
+                    [xml]$eventXml = $event.ToXml()
+                    $activityID = $eventXml.Event.System.Correlation.ActivityID
+                }
+                catch
+                {
+                    # Ignore XML parse errors for remote events
+                }
+
+                switch ($event.Id)
+                {
+                    4768
+                    {
+                        $userName = if ($message -match 'Account Name:\s+([^\r\n]+)') { $matches[1].Trim() } else { 'N/A' }
+                        $userDomain = if ($message -match 'Account Domain:\s+([^\r\n]+)') { $matches[1].Trim() } else { 'N/A' }
+                        $sourceIP = if ($message -match 'Client Address:\s+::ffff:([^\r\n]+)') { $matches[1].Trim() }
+                        elseif ($message -match 'Client Address:\s+([^\r\n]+)') { $matches[1].Trim() } else { 'N/A' }
+                        $statusCode = if ($message -match 'Result Code:\s+([^\r\n]+)') { $matches[1].Trim() } else { 'N/A' }
+                        $ticketOptions = if ($message -match 'Ticket Options:\s+([^\r\n]+)') { $matches[1].Trim() } else { 'N/A' }
+                        $eventType = if ($statusCode -eq '0x0') { 'Kerberos TGT Success' } else { 'Kerberos TGT Failed' }
+
+                        [PSCustomObject]@{
+                            TimeCreated = $event.TimeCreated
+                            EventID     = $event.Id
+                            EventType   = $eventType
+                            User        = $userName
+                            Domain      = $userDomain
+                            SourceIP    = $sourceIP
+                            SessionID   = $null
+                            LogonID     = $null
+                            ActivityID  = $activityID
+                            Details     = "DC: $($event.MachineName) | Result: $statusCode | Options: $ticketOptions"
+                        }
+                    }
+                    4769
+                    {
+                        $userName = if ($message -match 'Account Name:\s+([^\r\n]+)') { $matches[1].Trim() } else { 'N/A' }
+                        $userDomain = if ($message -match 'Account Domain:\s+([^\r\n]+)') { $matches[1].Trim() } else { 'N/A' }
+                        $serviceName = if ($message -match 'Service Name:\s+([^\r\n]+)') { $matches[1].Trim() } else { 'N/A' }
+                        $sourceIP = if ($message -match 'Client Address:\s+::ffff:([^\r\n]+)') { $matches[1].Trim() }
+                        elseif ($message -match 'Client Address:\s+([^\r\n]+)') { $matches[1].Trim() } else { 'N/A' }
+                        $statusCode = if ($message -match 'Failure Code:\s+([^\r\n]+)') { $matches[1].Trim() } else { '0x0' }
+                        $eventType = if ($statusCode -eq '0x0') { 'Kerberos Service Ticket Success' } else { 'Kerberos Service Ticket Failed' }
+
+                        [PSCustomObject]@{
+                            TimeCreated = $event.TimeCreated
+                            EventID     = $event.Id
+                            EventType   = $eventType
+                            User        = $userName
+                            Domain      = $userDomain
+                            SourceIP    = $sourceIP
+                            SessionID   = $null
+                            LogonID     = $null
+                            ActivityID  = $activityID
+                            Details     = "DC: $($event.MachineName) | Service: $serviceName | Result: $statusCode"
+                        }
+                    }
+                    4770
+                    {
+                        $userName = if ($message -match 'Account Name:\s+([^\r\n]+)') { $matches[1].Trim() } else { 'N/A' }
+                        $userDomain = if ($message -match 'Account Domain:\s+([^\r\n]+)') { $matches[1].Trim() } else { 'N/A' }
+                        $serviceName = if ($message -match 'Service Name:\s+([^\r\n]+)') { $matches[1].Trim() } else { 'N/A' }
+                        $sourceIP = if ($message -match 'Client Address:\s+::ffff:([^\r\n]+)') { $matches[1].Trim() }
+                        elseif ($message -match 'Client Address:\s+([^\r\n]+)') { $matches[1].Trim() } else { 'N/A' }
+
+                        [PSCustomObject]@{
+                            TimeCreated = $event.TimeCreated
+                            EventID     = $event.Id
+                            EventType   = 'Kerberos Ticket Renewed'
+                            User        = $userName
+                            Domain      = $userDomain
+                            SourceIP    = $sourceIP
+                            SessionID   = $null
+                            LogonID     = $null
+                            ActivityID  = $activityID
+                            Details     = "DC: $($event.MachineName) | Service: $serviceName"
+                        }
+                    }
+                    4771
+                    {
+                        $userName = if ($message -match 'Account Name:\s+([^\r\n]+)') { $matches[1].Trim() } else { 'N/A' }
+                        $userDomain = if ($message -match 'Service Name:\s+krbtgt/([^\r\n]+)') { $matches[1].Trim() }
+                        elseif ($message -match 'Account Domain:\s+([^\r\n]+)') { $matches[1].Trim() } else { 'N/A' }
+                        $sourceIP = if ($message -match 'Client Address:\s+::ffff:([^\r\n]+)') { $matches[1].Trim() }
+                        elseif ($message -match 'Client Address:\s+([^\r\n]+)') { $matches[1].Trim() } else { 'N/A' }
+                        $errorCode = if ($message -match 'Failure Code:\s+([^\r\n]+)') { $matches[1].Trim() } else { 'N/A' }
+                        $errorDesc = switch ($errorCode)
+                        {
+                            '0x6' { 'Client not found' }
+                            '0x7' { 'Server not found' }
+                            '0xC' { 'Workstation restriction' }
+                            '0x12' { 'Client revoked/disabled' }
+                            '0x17' { 'Password expired' }
+                            '0x18' { 'Wrong password' }
+                            '0x25' { 'Clock skew too large' }
+                            default { "Code $errorCode" }
+                        }
+
+                        [PSCustomObject]@{
+                            TimeCreated = $event.TimeCreated
+                            EventID     = $event.Id
+                            EventType   = 'Kerberos Pre-auth Failed'
+                            User        = $userName
+                            Domain      = $userDomain
+                            SourceIP    = $sourceIP
+                            SessionID   = $null
+                            LogonID     = $null
+                            ActivityID  = $activityID
+                            Details     = "DC: $($event.MachineName) | Error: $errorDesc"
+                        }
+                    }
+                    4772
+                    {
+                        $userName = if ($message -match 'Account Name:\s+([^\r\n]+)') { $matches[1].Trim() } else { 'N/A' }
+                        $userDomain = if ($message -match 'Account Domain:\s+([^\r\n]+)') { $matches[1].Trim() } else { 'N/A' }
+                        $sourceIP = if ($message -match 'Client Address:\s+::ffff:([^\r\n]+)') { $matches[1].Trim() }
+                        elseif ($message -match 'Client Address:\s+([^\r\n]+)') { $matches[1].Trim() } else { 'N/A' }
+
+                        [PSCustomObject]@{
+                            TimeCreated = $event.TimeCreated
+                            EventID     = $event.Id
+                            EventType   = 'Kerberos Auth Ticket Failed'
+                            User        = $userName
+                            Domain      = $userDomain
+                            SourceIP    = $sourceIP
+                            SessionID   = $null
+                            LogonID     = $null
+                            ActivityID  = $activityID
+                            Details     = "DC: $($event.MachineName)"
+                        }
+                    }
+                    4776
+                    {
+                        $userName = if ($message -match 'Logon Account:\s+([^\r\n]+)') { $matches[1].Trim() } else { 'N/A' }
+                        $sourceWs = if ($message -match 'Source Workstation:\s+([^\r\n]+)') { $matches[1].Trim() } else { 'N/A' }
+                        $statusCode = if ($message -match 'Error Code:\s+([^\r\n]+)') { $matches[1].Trim() } else { '0x0' }
+                        $eventType = if ($statusCode -eq '0x0') { 'NTLM Credential Validation Success' } else { 'NTLM Credential Validation Failed' }
+
+                        [PSCustomObject]@{
+                            TimeCreated = $event.TimeCreated
+                            EventID     = $event.Id
+                            EventType   = $eventType
+                            User        = $userName
+                            Domain      = 'N/A'
+                            SourceIP    = $sourceWs
+                            SessionID   = $null
+                            LogonID     = $null
+                            ActivityID  = $activityID
+                            Details     = "DC: $($event.MachineName) | Source: $sourceWs | Status: $statusCode"
+                        }
+                    }
+                }
+            }
+
+            $allEvents += $dcParsed
+            Write-Host "  $(Get-Emoji 'check') Parsed " -ForegroundColor Green -NoNewline
+            Write-Host "$($dcParsed.Count)" -ForegroundColor White -NoNewline
+            Write-Host " pre-authentication events from DC(s)" -ForegroundColor Green
+        }
+        else
+        {
+            Write-Host "  $(Get-Emoji 'cross') No pre-authentication events found on DC(s)" -ForegroundColor DarkGray
+        }
+    }
+    else
+    {
+        # No DC targets - collect everything locally (original behavior)
+        $allEvents += Get-RDPAuthenticationEvents -Start $StartDate -End $EndDate -IncludeKerberosAndNTLM $IncludeCredentialValidation.IsPresent
+    }
+
     $allEvents += Get-RDPSessionEvents -Start $StartDate -End $EndDate
     $allEvents += Get-RDPLockUnlockEvents -Start $StartDate -End $EndDate
     $allEvents += Get-RDPSessionReconnectEvents -Start $StartDate -End $EndDate

@@ -5,12 +5,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Added `-DomainController` parameter to query specific Domain Controller(s)
+  for Kerberos (4768-4772) and NTLM (4776) pre-authentication events remotely.
+- Added `-AllDomainControllers` switch to query ALL DCs in the domain for
+  complete pre-authentication event coverage.
+- Added automatic secure channel DC discovery via `nltest /sc_query` when
+  `-IncludeCredentialValidation` is used without explicit DC parameters.
+- Added WinRM (Invoke-Command) transport with automatic RPC/DCOM fallback
+  for Domain Controller event queries.
+- Added DC hostname in parsed event Details for traceability.
+- Added DC target display in analysis header output.
+- Added `Get-RDPForensics.DomainController.Tests.ps1` test file with
+  comprehensive parameter, parsing, and compatibility tests.
+- Added scenarios 19-21 to `Examples.ps1` for DC query workflows.
+
 ### Changed
 
-- Removed Code of Conduct section from README.md.
-- Removed Contributing section from README.md.
-- Updated PowerShell Gallery badge to include prerelease version.
-- Cleaned up `.gitignore` by removing unnecessary entries.
+- `-IncludeCredentialValidation` no longer requires running on a Domain
+  Controller. The tool now queries DCs remotely from any Terminal Server.
+- `-DomainController` and `-AllDomainControllers` implicitly enable
+  `-IncludeCredentialValidation`.
+- Updated `KERBEROS_NTLM_AUTHENTICATION.md` documentation to reflect
+  remote DC query capability and removed DC-only constraint.
+- Updated `GETTING_STARTED.md` and `QUICK_REFERENCE.md` with new
+  DC query parameters and examples.
 
 ## [2.1.3] - 2026-03-31
 

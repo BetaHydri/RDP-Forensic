@@ -238,12 +238,32 @@ Get-WinEvent -FilterHashtable @{LogName='Security'; Id=1102}
 
 ## Remote Analysis
 
-### Query Remote Computer
+### Query Domain Controller for Pre-Auth Events
+
+```powershell
+# Auto-discover secure channel DC (recommended on Terminal Servers)
+Get-RDPForensics -IncludeCredentialValidation -GroupBySession
+
+# Query specific DC(s)
+Get-RDPForensics -DomainController 'DC01' -GroupBySession
+Get-RDPForensics -DomainController 'DC01','DC02' -GroupBySession
+
+# Query ALL DCs (thorough but slower)
+Get-RDPForensics -AllDomainControllers -GroupBySession
+```
+
+> **Note**: `-DomainController` and `-AllDomainControllers` imply `-IncludeCredentialValidation`.
+> Transport: WinRM (Invoke-Command) with automatic RPC/DCOM fallback.
+> Requires "Event Log Readers" group membership on the DC(s).
+
+### Query Remote Computer (Manual)
+
 ```powershell
 Get-WinEvent -ComputerName SERVER01 -FilterHashtable @{LogName='Security'; Id=4624}
 ```
 
-### Multiple Computers
+### Multiple Computers (Manual)
+
 ```powershell
 $computers = @('SERVER01','SERVER02','SERVER03')
 Invoke-Command -ComputerName $computers -ScriptBlock {

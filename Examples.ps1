@@ -642,6 +642,68 @@ Write-Host "  ✓ Incident response: Quick session export for evidence" -Foregro
 Write-Host "  ✓ Troubleshooting: Isolate specific user's session" -ForegroundColor Gray
 #>
 
+# ============================================================================
+# SCENARIO 19: Query DC for Pre-Auth Events (Auto-Discover)
+# ============================================================================
+<#
+Write-Host "SCENARIO 19: Auto-Discover Secure Channel DC" -ForegroundColor Green
+Write-Host "Query the Terminal Server's secure channel DC for authentication events"
+Write-Host ""
+
+# Auto-discovers the TS's secure channel DC via nltest /sc_query
+# Reliably captures NTLM (4776) events; best-effort for Kerberos
+Get-RDPForensics -IncludeCredentialValidation -GroupBySession `
+    -StartDate (Get-Date).AddDays(-1)
+
+Write-Host "`nUse Case: Terminal Server with domain users" -ForegroundColor Green
+Write-Host "  ✓ Auto-discovers which DC authenticated your TS" -ForegroundColor Gray
+Write-Host "  ✓ Captures NTLM (4776) reliably from secure channel DC" -ForegroundColor Gray
+Write-Host "  ✓ Best-effort Kerberos capture from that same DC" -ForegroundColor Gray
+Write-Host "  ✓ WinRM primary, RPC/DCOM fallback" -ForegroundColor Gray
+#>
+
+# ============================================================================
+# SCENARIO 20: Query Specific Domain Controller(s)
+# ============================================================================
+<#
+Write-Host "SCENARIO 20: Query Specific Domain Controllers" -ForegroundColor Green
+Write-Host "Target specific DCs for pre-authentication events"
+Write-Host ""
+
+# Single DC
+Get-RDPForensics -DomainController 'DC01' -GroupBySession `
+    -StartDate (Get-Date).AddDays(-1)
+
+# Multiple DCs for broader Kerberos coverage
+Get-RDPForensics -DomainController 'DC01','DC02' -GroupBySession `
+    -StartDate (Get-Date).AddDays(-1) `
+    -Username 'john.doe'
+
+Write-Host "`nUse Case: Known DC topology" -ForegroundColor Green
+Write-Host "  ✓ Target the DCs that serve your RDP client workstations" -ForegroundColor Gray
+Write-Host "  ✓ Combine with -Username for targeted investigation" -ForegroundColor Gray
+Write-Host "  ✓ Details show which DC logged each event" -ForegroundColor Gray
+#>
+
+# ============================================================================
+# SCENARIO 21: Query ALL Domain Controllers
+# ============================================================================
+<#
+Write-Host "SCENARIO 21: Full DC Coverage" -ForegroundColor Green
+Write-Host "Query all DCs for complete Kerberos and NTLM coverage"
+Write-Host ""
+
+# Discovers all DCs via Get-ADDomainController -Filter * (or nltest /dclist)
+Get-RDPForensics -AllDomainControllers -GroupBySession `
+    -StartDate (Get-Date).AddDays(-1) `
+    -ExportPath "C:\RDP_Reports\FullDC"
+
+Write-Host "`nUse Case: Thorough forensic investigation" -ForegroundColor Green
+Write-Host "  ✓ Captures Kerberos events regardless of which DC the client used" -ForegroundColor Gray
+Write-Host "  ✓ Complete NTLM coverage across all DCs" -ForegroundColor Gray
+Write-Host "  ⚠️  Slower in large environments with many DCs" -ForegroundColor Yellow
+#>
+
 Write-Host "`nTo run an example, uncomment the desired scenario in this file and run again." -ForegroundColor Cyan
 Write-Host "Example scenarios available:" -ForegroundColor Yellow
 Write-Host "  1. Daily Security Review" -ForegroundColor Gray
@@ -656,11 +718,14 @@ Write-Host "  9. Monthly Executive Report" -ForegroundColor Gray
 Write-Host " 10. Incident Response - Full Investigation" -ForegroundColor Gray
 Write-Host " 11. Real-Time Session Monitoring (Auto-Refresh)" -ForegroundColor Gray
 Write-Host " 12. Session Correlation & Lifecycle Analysis" -ForegroundColor Gray
-Write-Host " 13. Test v1.0.7 Enhanced Correlation" -ForegroundColor Gray
-Write-Host " 14. Filter by LogonID (NEW in v1.0.7)" -ForegroundColor Green
-Write-Host " 15. Filter by SessionID (NEW in v1.0.7)" -ForegroundColor Green
-Write-Host " 16. Domain Controller Correlation Testing (NEW in v1.0.7)" -ForegroundColor Green
-Write-Host " 17. Workgroup Server Correlation Testing (NEW in v1.0.7)" -ForegroundColor Green
-Write-Host " 18. Combine New Filters (NEW in v1.0.7)" -ForegroundColor Green
+Write-Host " 13. Test Enhanced Correlation" -ForegroundColor Gray
+Write-Host " 14. Filter by LogonID" -ForegroundColor Gray
+Write-Host " 15. Filter by SessionID" -ForegroundColor Gray
+Write-Host " 16. Domain Controller Correlation Testing" -ForegroundColor Gray
+Write-Host " 17. Workgroup Server Correlation Testing" -ForegroundColor Gray
+Write-Host " 18. Combine New Filters" -ForegroundColor Gray
+Write-Host " 19. Auto-Discover DC for Pre-Auth Events" -ForegroundColor Green
+Write-Host " 20. Query Specific Domain Controller(s)" -ForegroundColor Green
+Write-Host " 21. Query ALL Domain Controllers" -ForegroundColor Green
 Write-Host ""
 

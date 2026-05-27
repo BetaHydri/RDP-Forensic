@@ -31,6 +31,7 @@ full release to [PowerShell Gallery](https://www.powershellgallery.com/).
 | **Customization** | ✅ Full source access | ✅ Script yourself | ❌ No |
 | **Forensic Focus** | ✅ Purpose-built | ❌ General purpose | ❌ General purpose |
 | **Incident Response** | ✅ Ready-to-use scenarios | ❌ DIY | ❌ Manual |
+| **DC Auth Query** | ✅ Remote DC query (WinRM/RPC) | ❌ Manual | ❌ Manual |
 | **No Internet Required** | ✅ Offline capable | ✅ Yes | ✅ Yes |
 | **Script Size** | ✅ Lightweight (~25KB) | N/A | N/A |
 
@@ -95,11 +96,11 @@ The main forensics analysis cmdlet collects and analyzes RDP connection logs fro
 | Event Type | Event IDs | Logged On | Tool Scope |
 |------------|-----------|-----------|------------|
 | **RDP Sessions** | 1149, 21-25, 39, 40, 4624, 4778, 4779 | Terminal Server | ✅ Primary use case |
-| **Credential Submission** | 4648 | Terminal Server | ✅ NEW in v1.0.8 |
-| **Kerberos Auth** | 4768-4772 | **Domain Controller** | ⚠️ DC only |
-| **NTLM Auth** | 4776 | **Domain Controller** | ⚠️ DC only |
+| **Credential Submission** | 4648 | Terminal Server | ✅ Included |
+| **Kerberos Auth** | 4768-4772 | **Domain Controller** | ✅ Remote DC query |
+| **NTLM Auth** | 4776 | **Domain Controller** | ✅ Remote DC query |
 
-⚠️ **Key Limitation:** This tool queries the **local Security log** where it runs. Kerberos and NTLM authentication events (4768-4772, 4776) are logged on the Domain Controller, not the Terminal Server. The `-IncludeCredentialValidation` parameter will return ZERO events when running on a Terminal Server.
+**DC Authentication Events:** Kerberos (4768-4772) and NTLM (4776) events are logged on the Domain Controller. The tool queries DCs remotely via WinRM (with RPC fallback) using `-IncludeCredentialValidation`, `-DomainController`, or `-AllDomainControllers`. When no DC is specified, the Terminal Server's secure channel DC is auto-discovered. Requires "Event Log Readers" membership on the DC(s).
 
 **Audit Policy Requirements:**
 
@@ -108,13 +109,13 @@ Most RDP events (1149, 21-25, 39, 40, 9009) are logged by default in Terminal Se
 **Events requiring audit policies (ON TERMINAL SERVER):**
 - EventID 4624, 4625 (Logon/Failed Logon) - Requires "Audit Logon Events"
 - EventID 4634, 4647 (Logoff) - Requires "Audit Logon Events"
-- EventID 4648 (Explicit Credential Usage) - Requires "Audit Logon Events" - NEW in v1.0.8
+- EventID 4648 (Explicit Credential Usage) - Requires "Audit Logon Events"
 - EventID 4778, 4779 (Session Reconnect/Disconnect) - Requires "Audit Other Logon/Logoff Events"
 - EventID 4800, 4801 (Workstation Lock/Unlock) - Requires "Audit Other Logon/Logoff Events"
 
 **Events requiring audit policies (ON DOMAIN CONTROLLER):**
-- **EventID 4768-4772 (Kerberos) - Requires "Audit Kerberos Authentication Service" (optional, DC only)**
-- **EventID 4776 (NTLM) - Requires "Audit Credential Validation" (optional, DC only)**
+- **EventID 4768-4772 (Kerberos) - Requires "Audit Kerberos Authentication Service" (on DC)**
+- **EventID 4776 (NTLM) - Requires "Audit Credential Validation" (on DC)**
 
 **Enable via PowerShell (recommended):**
 ```powershell
@@ -210,9 +211,14 @@ Get-RDPForensics -GroupBySession
 Get-RDPForensics -StartDate (Get-Date).AddDays(-7) -GroupBySession -ExportPath "C:\Reports\RDP"
 
 # Include Kerberos (4768-4772) and NTLM (4776) authentication events
-# ⚠️ NOTE: These events are on Domain Controller, not Terminal Server
-# Only shows events when running tool on DC
+# Auto-discovers Terminal Server's secure channel DC and queries remotely
 Get-RDPForensics -IncludeCredentialValidation -GroupBySession
+
+# Query specific Domain Controller(s) for pre-auth events
+Get-RDPForensics -DomainController 'DC01' -GroupBySession
+
+# Query ALL DCs for complete Kerberos coverage (slower)
+Get-RDPForensics -AllDomainControllers -GroupBySession
 
 # Deep dive forensic analysis with credential validation and Event 4648
 # Filter by username, source IP, and specific LogonID for complete session correlation
@@ -260,7 +266,9 @@ LogonID and SessionID parameters cannot be used together (enforced via PowerShel
 
 | Parameter | Type | Description | Default |
 |-----------|------|-------------|---------|
-| `IncludeCredentialValidation` | Switch | Include Kerberos/NTLM events (DC only) | False |
+| `IncludeCredentialValidation` | Switch | Include Kerberos/NTLM events (queries DC remotely) | False |
+| `DomainController` | String[] | DC hostname(s) to query for pre-auth events | Auto-discover |
+| `AllDomainControllers` | Switch | Query ALL DCs for pre-auth events | False |
 
 ```
 ## 🎯 Forensic Analysis Best Practices
@@ -505,7 +513,7 @@ Timestamp,EventType,SessionName,Username,SessionID,State,SourceIP,Details
 2025-12-16 10:02:45,SESSION_ENDED,rdp-tcp#2,john.doe,3,Disc,,Session ended or disconnected
 ```
 
-**Extended Properties (v1.0.8):**
+**Extended Properties:**
 
 The tool now displays comprehensive session information:
 - **ClientIP** - Source IP address of RDP connection
@@ -528,7 +536,7 @@ The tool now displays comprehensive session information:
 ### Connection Attempts
 - **1149** - Remote Desktop Services: User authentication succeeded (RemoteConnectionManager)
 
-### Credential Submission (NEW in v1.0.8)
+### Credential Submission
 - **4648** - Explicit credential usage (logs credential submission before actual logon, includes Subject, Target, Server, Process)
 
 ### Authentication
@@ -704,20 +712,7 @@ For large environments with extensive logs:
 ## Additional Resources
 
 - [Microsoft: Audit logon events](https://docs.microsoft.com/en-us/windows/security/threat-protection/auditing/basic-audit-logon-events)
-- [Microsoft: Remote Desktop Services event logs Troubeshooting](https://learn.microsoft.com/en-us/troubleshoot/windows-server/remote/log-files-to-troubleshoot-rds-issues)
-
-## Documentation
-
-- **[CHANGELOG.md](CHANGELOG.md)** - Version history and release notes
-- **[Getting Started Guide](docs/GETTING_STARTED.md)** - Quick start tutorial and common scenarios
-- **[Quick Reference](docs/QUICK_REFERENCE.md)** - Event IDs cheat sheet and PowerShell one-liners
-- **[Kerberos/NTLM Authentication](docs/KERBEROS_NTLM_AUTHENTICATION.md)** - Deep dive into pre-authentication tracking
-- **[Release Notes](docs/releases/)** - Detailed release notes for all versions
-  - [v1.0.8](docs/releases/v1.0.8.md) - Event 4648, Parameter Sets, SessionID fix
-  - [v1.0.7](docs/releases/v1.0.7.md) - Correlation engine fixes
-  - [v1.0.6](docs/releases/v1.0.6.md) - Kerberos/NTLM tracking
-  - [v1.0.5](docs/releases/v1.0.5.md) - ActivityID correlation
-  - [v1.0.4](docs/releases/v1.0.4.md) - Session grouping
+- [Microsoft: Remote Desktop Services event logs Troubleshooting](https://learn.microsoft.com/en-us/troubleshoot/windows-server/remote/log-files-to-troubleshoot-rds-issues)
 
 ## Version History
 
@@ -726,10 +721,6 @@ See [CHANGELOG.md](CHANGELOG.md) for complete version history.
 ## License
 
 This toolkit is provided as-is for forensic analysis and security monitoring purposes.
-
-## Change log
-
-A full list of changes in each version can be found in the [change log](CHANGELOG.md).
 
 ## Documentation
 

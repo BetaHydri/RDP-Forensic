@@ -68,12 +68,18 @@ $events | Where-Object {$_.EventID -eq 4625} | Group-Object SourceIP | Sort-Obje
 
 ### Include Credential Validation Events
 ```powershell
-# Track NTLM authentication attempts with time-based correlation
+# Auto-discover secure channel DC and query pre-auth events
 Get-RDPForensics -IncludeCredentialValidation -GroupBySession
 
+# Query specific DC for pre-auth events
+Get-RDPForensics -DomainController 'DC01' -GroupBySession
+
+# Query ALL DCs for full Kerberos coverage
+Get-RDPForensics -AllDomainControllers -GroupBySession
+
 # Find failed credential validations (potential brute force)
-$events = Get-RDPForensics -IncludeCredentialValidation -StartDate (Get-Date).AddDays(-1)
-$events | Where-Object {$_.EventType -match 'Credential Validation Failed'} | Group-Object User, SourceIP
+$events = Get-RDPForensics -DomainController 'DC01' -StartDate (Get-Date).AddDays(-1)
+$events | Where-Object {$_.EventType -match 'Failed'} | Group-Object User, SourceIP
 ```
 
 ## What Events Are Tracked
@@ -156,7 +162,7 @@ Perfect for:
 
 ⚠️ **Important:** Security log events (4624, 4634, 4778, 4779) require specific audit policies to be enabled. Terminal Services logs work by default.
 
-⚠️ **Critical Limitation:** Kerberos (4768-4772) and NTLM (4776) events are logged on the **Domain Controller**, not the Terminal Server. The tool queries the local Security log, so `-IncludeCredentialValidation` will return ZERO events when running on a Terminal Server.
+**Domain Controller Note:** Kerberos (4768-4772) and NTLM (4776) events are logged on the Domain Controller. When using `-IncludeCredentialValidation`, `-DomainController`, or `-AllDomainControllers`, the tool queries the DC(s) remotely via WinRM (with RPC fallback). Ensure "Event Log Readers" group membership on the DC(s) and that audit policies are enabled on the DC.
 
 **Quick Enable via PowerShell:**
 ```powershell
