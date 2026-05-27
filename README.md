@@ -353,6 +353,52 @@ LogonID and SessionID parameters cannot be used together (enforced via PowerShel
 | `DomainController` | String[] | DC hostname(s) to query for pre-auth events | Auto-discover |
 | `AllDomainControllers` | Switch | Query ALL DCs for pre-auth events | False |
 
+### Domain Controller Query Parameters — When to Use Which
+
+Kerberos (4768-4772) and NTLM (4776) pre-authentication events are **not logged on the Terminal Server** — they are logged on the **Domain Controller** that handled the authentication. To include these events, you need one of the following parameters:
+
+| Parameter | What it does | DC discovery | Best for |
+|-----------|-------------|--------------|----------|
+| `-IncludeCredentialValidation` | Queries the Terminal Server's **secure channel DC** | Auto-discovers via `nltest /sc_query` | Quick check — covers NTLM reliably, Kerberos only if the client used the same DC |
+| `-DomainController 'DC01'` | Queries **specific DC(s)** you provide | You specify | Targeted investigation — you know which DC handled the auth |
+| `-DomainController 'DC01','DC02'` | Queries **multiple specific DCs** | You specify | Covering known DCs without querying all |
+| `-AllDomainControllers` | Queries **every DC** in the domain | Auto-discovers via `Get-ADDomainController -Filter *` | Thorough investigation — guaranteed Kerberos coverage |
+
+**How they relate:**
+- `-DomainController` and `-AllDomainControllers` **implicitly enable** `-IncludeCredentialValidation` — you don't need to specify both.
+- `-IncludeCredentialValidation` alone auto-discovers the secure channel DC, so no DC name is needed.
+- All three use **WinRM** (Invoke-Command) with automatic **RPC/DCOM fallback** if WinRM is unavailable.
+
+**Why does DC choice matter for Kerberos?**
+
+| Event | Where it's logged | Coverage with `-IncludeCredentialValidation` | Coverage with `-AllDomainControllers` |
+|-------|------------------|----------------------------------------------|---------------------------------------|
+| **4776 (NTLM)** | Terminal Server's secure channel DC | ✅ Reliable — NTLM always goes to this DC | ✅ Complete |
+| **4768 (Kerberos TGT)** | DC the **client** contacted | ⚠️ May miss — client may use a different DC | ✅ Complete |
+| **4769 (Kerberos Service Ticket)** | DC the **client** contacted | ⚠️ May miss | ✅ Complete |
+| **4771 (Kerberos Pre-auth Failed)** | DC the **client** contacted | ⚠️ May miss | ✅ Complete |
+
+> **💡 Recommendation:**
+> - For **quick triage**, use `-IncludeCredentialValidation` — fast, covers NTLM, and often catches Kerberos too.
+> - For **thorough forensic investigation**, use `-AllDomainControllers` — slower but guarantees complete Kerberos coverage.
+> - For **large environments** with many DCs, use `-DomainController` with the 2-3 most likely DCs to balance speed vs. coverage.
+
+**Prerequisites:** Requires **"Event Log Readers"** group membership (or equivalent) on the target DC(s) for the account running the tool.
+
+**Examples:**
+
+```powershell
+# Quick: auto-discover secure channel DC
+Get-RDPForensics -IncludeCredentialValidation -GroupBySession
+
+# Targeted: query specific DC(s)
+Get-RDPForensics -DomainController 'DC01' -GroupBySession
+Get-RDPForensics -DomainController 'DC01','DC02' -GroupBySession -Username "john.doe"
+
+# Thorough: query ALL DCs (slower in large environments)
+Get-RDPForensics -AllDomainControllers -GroupBySession
+```
+
 ```
 ## 🎯 Forensic Analysis Best Practices
 

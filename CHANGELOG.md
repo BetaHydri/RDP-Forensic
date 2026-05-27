@@ -5,6 +5,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.2.2] - 2026-05-27
+
+### Added
+
+- Added `info` emoji to the emoji map for both PowerShell 5.1 and 7.x.
+- Added `[ValidateNotNullOrEmpty()]` attribute to `-DomainController` parameter
+  to reject empty strings early with a clear error message.
+- Added visible info message when `-DomainController` or `-AllDomainControllers`
+  implicitly enables `-IncludeCredentialValidation`.
+- Added comprehensive DC query parameter documentation to README explaining
+  when to use `-IncludeCredentialValidation` vs `-DomainController` vs
+  `-AllDomainControllers` with Kerberos/NTLM coverage comparison table.
+- Added `-GroupBySession` sample output and LogonType explanation to README
+  and GETTING_STARTED.md.
+
 ## [2.2.1] - 2026-05-27
 
 ### Fixed

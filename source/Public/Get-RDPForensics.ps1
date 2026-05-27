@@ -190,6 +190,7 @@ function Get-RDPForensics
         [switch]$IncludeCredentialValidation,
 
         [Parameter()]
+        [ValidateNotNullOrEmpty()]
         [string[]]$DomainController,
 
         [Parameter()]
@@ -203,6 +204,10 @@ function Get-RDPForensics
     # -DomainController and -AllDomainControllers imply -IncludeCredentialValidation
     if ($DomainController -or $AllDomainControllers)
     {
+        if (-not $IncludeCredentialValidation)
+        {
+            $script:credValImplied = $true
+        }
         $IncludeCredentialValidation = [switch]::new($true)
     }
 
@@ -328,6 +333,7 @@ function Get-RDPForensics
                 'chart'    = [char]::ConvertFromUtf32(0x1F4CA)
                 'folder'   = [char]::ConvertFromUtf32(0x1F4C1)
                 'rocket'   = [char]::ConvertFromUtf32(0x1F680)
+                'info'     = [char]::ConvertFromUtf32(0x2139) + [char]::ConvertFromUtf32(0xFE0F)
             }
         }
         else
@@ -346,6 +352,7 @@ function Get-RDPForensics
                 'chart'    = "$([char]0x25A0)"  # Black square
                 'folder'   = "$([char]0x25B6)"  # Right-pointing triangle
                 'rocket'   = "$([char]0x25BA)"  # Right-pointing pointer
+                'info'     = "$([char]0x2022)"  # Bullet point
             }
         }
         return $emojis[$Name]
@@ -770,6 +777,10 @@ function Get-RDPForensics
     {
         Write-Host "$(Get-Emoji 'computer') DC Target(s): " -ForegroundColor Cyan -NoNewline
         Write-Host "$($dcTargets -join ', ')" -ForegroundColor White
+        if ($script:credValImplied)
+        {
+            Write-Host "$(Get-Emoji 'info') -IncludeCredentialValidation implicitly enabled (Kerberos/NTLM pre-auth events will be queried from DC)" -ForegroundColor DarkGray
+        }
     }
     Write-Host ""
 
