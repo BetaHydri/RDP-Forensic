@@ -8,9 +8,9 @@ Comprehensive PowerShell toolkit for analyzing and tracking Remote Desktop Proto
 ## Releases
 
 For each merge to the branch `main` a preview release will be
-deployed to [PowerShell Gallery](https://www.powershellgallery.com/).
+deployed to [PowerShell Gallery](https://www.powershellgallery.com/packages/RDP-Forensic).
 Periodically a release version tag will be pushed which will deploy a
-full release to [PowerShell Gallery](https://www.powershellgallery.com/).
+full release to [PowerShell Gallery](https://www.powershellgallery.com/packages/RDP-Forensic).
 ## Comparison
 
 | Feature | This Toolkit | Basic PowerShell<br/>(Get-EventLog) | Manual Event Viewer |
