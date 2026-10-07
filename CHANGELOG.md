@@ -5,6 +5,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.2.3] - 2026-10-07
+
 ### Fixed
 
 - Corrected PowerShell Gallery links in `README.md`.
